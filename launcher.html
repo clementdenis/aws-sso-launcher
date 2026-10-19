@@ -35,6 +35,10 @@
   .row .title { font-weight: 700; }
   .row .role { font-weight: 400; color: var(--ink); }
   .row small { color: var(--muted); font-size: 12px; }
+  .chevron { width: 12px; flex: none; color: var(--muted); font-size: 14px; }
+  .row.sub { margin-left: 30px; padding-block: 4px; }
+  .row.sub .title { font-weight: 400; }
+  .note.sub { margin-left: 40px; }
   .status { display: inline-flex; align-items: center; gap: 4px; color: var(--green); font-size: 12px; font-weight: 700; white-space: nowrap; }
   .status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
   .note { margin: 6px 14px; padding: 8px 12px; border-radius: 8px; background: #f4f4f4; color: var(--muted); font-size: 13px; }
@@ -57,6 +61,14 @@
   form input:focus { border-color: var(--blue); }
   form small { color: var(--muted); font-weight: 400; }
   form h2, form .note { margin: 8px 0 0; }
+  /* Suggestion list under an input (see combobox() in launcher.js). */
+  .combo { list-style: none; margin: 2px 0 0; padding: 4px 0; max-height: 168px; overflow-y: auto; font-weight: 400;
+           border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 4px 12px #0007161f; }
+  .combo li { padding: 4px 10px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .combo li:hover, .combo li.active { background: var(--blue-bg); }
+  .combo li.current { box-shadow: inset 3px 0 var(--blue); }
+  .combo li b { margin-right: 6px; }
+  .combo li span { color: var(--muted); }
   .history { margin: -4px 0 0; color: var(--muted); font-size: 13px; }
   .history button.btn.link { padding-left: 0; border-left-width: 0; }
   form .btn { justify-self: end; }
@@ -70,24 +82,22 @@
 </header>
 <div class="search" id="search">
   <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1a5.5 5.5 0 0 1 4.38 8.83l3.65 3.64-1.06 1.06-3.64-3.65A5.5 5.5 0 1 1 6.5 1Zm0 1.5a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"/></svg>
-  <input id="q" placeholder="Search accounts and permission sets" autocomplete="off" spellcheck="false" autofocus aria-label="Search">
+  <input id="q" placeholder="Search accounts by name, ID or email" autocomplete="off" spellcheck="false" autofocus aria-label="Search">
 </div>
 <main id="results"></main>
 <form id="settings" hidden>
   <h2>Settings</h2>
   <p id="welcome" class="note" hidden>Welcome! Enter your AWS access portal prefix to get started.</p>
   <label>Access portal prefix
-    <input name="prefix" required pattern="[A-Za-z0-9-]+" placeholder="mycompany" list="prefix-options" autocomplete="off">
+    <input name="prefix" required pattern="[A-Za-z0-9-]+" placeholder="mycompany" autocomplete="off" role="combobox">
     <small>From your portal URL: https://<b>prefix</b>.awsapps.com/start</small>
   </label>
-  <datalist id="prefix-options"></datalist>
   <p class="history"><span id="history-hint"></span>
     <button type="button" class="btn link" id="history-btn" hidden>Find it in my browsing history</button></p>
   <label>Console sign-in region
-    <input name="region" required pattern="[a-z]{2}(-[a-z]+)+-[0-9]" placeholder="us-east-1" list="region-options" autocomplete="off">
+    <input name="region" required pattern="[a-z]{2}(-[a-z]+)+-[0-9]" placeholder="us-east-1" autocomplete="off" role="combobox">
     <small>Used to read your console sessions.</small>
   </label>
-  <datalist id="region-options"></datalist>
   <button class="btn primary">Save</button>
 </form>
 <footer id="footer">

@@ -9,3 +9,4 @@ chrome.tabs.onUpdated.addListener((_id, change, tab) => {
   if (change.status === "complete" && tab.url?.startsWith("https://")) refreshBadge();
 });
 refreshBadge();
+
