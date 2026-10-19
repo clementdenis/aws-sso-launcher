@@ -2,7 +2,7 @@
 
 A small Chrome / Microsoft Edge extension for people who live in AWS IAM Identity Center (AWS SSO). Press <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> (or click the icon), type a few letters of an account, pick a permission set, press <kbd>Enter</kbd>: you're in the console.
 
-![The launcher: active console sessions on top, searchable accounts below, one expanded to its permission sets](docs/screenshot.png)
+<img src="docs/screenshot.png" width="480" alt="The launcher on a console page: This page card with Copy link, Bookmark and pin; 3 of 5 active sessions with Sign out; pinned permission set and pinned page; accounts with one opened to its permission sets">
 
 - **Search every account** assigned to you, by name, ID or email (all words must match). Open an account to see its permission sets: they're fetched only then, so even large organizations load in one call. When your search matches a single account, its permission sets show up right away.
 - **Pin an account + permission set** for one-click sign-in: pins stay in a **Pinned** section at the top (synced across your browsers). While a pin has an active session, it is listed under the session instead.
