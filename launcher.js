@@ -20,7 +20,7 @@ const form = $("settings");
 let settings = DEFAULTS;
 let sessions = { live: [] };
 let accounts = [];        // [{ accountId, accountName, email }]
-let pinned = new Set();   // pinned account IDs (synced with the browser profile)
+let pinned = new Set();   // pinned "accountId/permission set" pairs (synced with the browser profile)
 let accountsNote = null;  // { text, error?, action? } shown above the account list
 const expanded = new Set(); // account IDs showing their permission sets
 const roles = new Map();  // account ID -> permission set names, "loading" or an Error
@@ -99,34 +99,47 @@ const rowAccountId = row => row.account?.accountId ?? row.accountId ?? row.sessi
 
 const sessionRow = s => addRow({ session: s }, "",
   info(sessionName(s), roleName(s.principal_arn), [...accountIdWithCopy(rowAccountId({ session: s })), ` · expires ${time(s.expiry)}`], s.principal_arn),
-  Object.assign(button("Sign out", "", ev => { ev.stopPropagation(); signOut(s); }), { title: "Sign out of this session (Delete)" }));
+  Object.assign(button("Sign out", "", ev => { ev.stopPropagation(); signOut(s); }), { title: "Sign out of this session (Delete)" }),
+  pinButton(pinKey(rowAccountId({ session: s }), roleName(s.principal_arn)), `${sessionName(s)} ${roleName(s.principal_arn)}`));
 
-function togglePin(accountId) {
-  if (!pinned.delete(accountId)) pinned.add(accountId);
-  chrome.storage.sync.set({ pinned: [...pinned] });
+const pinKey = (accountId, role) => `${accountId}/${role}`; // permission set names can't contain "/"
+
+function togglePin(key) {
+  if (!pinned.delete(key)) pinned.add(key);
+  chrome.storage.sync.set({ pins: [...pinned] });
   render();
+}
+
+const pinButton = (key, label) => {
+  const on = pinned.has(key);
+  return el("button", {
+    className: `pin${on ? " on" : ""}`, textContent: on ? "★" : "☆",
+    title: on ? "Unpin" : "Pin to the top for one-click sign-in", ariaLabel: `${on ? "Unpin" : "Pin"} ${label}`,
+    onclick: ev => { ev.stopPropagation(); togglePin(key); }
+  });
+};
+
+// A permission set row: opens the console (reusing an active session); `pinnedRow` is the copy in Pinned.
+function roleRow(account, role, pinnedRow) {
+  const s = sessionFor(account.accountId, role, sessions.live);
+  const key = pinKey(account.accountId, role);
+  return addRow({ accountId: account.accountId, role, session: s }, pinnedRow ? "" : "sub",
+    pinnedRow ? info(account.accountName, role, accountIdWithCopy(account.accountId)) : info(role),
+    s ? activeTag("Opens your existing console session") : "",
+    pinButton(key, `${account.accountName} ${role}`));
 }
 
 // An account row, followed by its permission sets when expanded.
 function accountRows(a) {
   const open = expanded.has(a.accountId);
-  const isPinned = pinned.has(a.accountId);
   const nodes = [addRow({ account: a }, "",
     el("span", { className: "chevron", textContent: open ? "▾" : "▸" }),
     info(a.accountName, null, [...accountIdWithCopy(a.accountId), ` · ${a.email}`]),
-    hasSession(a.accountId, sessions.live) ? activeTag("You have a console session in this account") : "",
-    el("button", {
-      className: `pin${isPinned ? " on" : ""}`, textContent: isPinned ? "★" : "☆",
-      title: isPinned ? "Unpin" : "Pin to the top", ariaLabel: `${isPinned ? "Unpin" : "Pin"} ${a.accountName}`,
-      onclick: ev => { ev.stopPropagation(); togglePin(a.accountId); }
-    }))];
+    hasSession(a.accountId, sessions.live) ? activeTag("You have a console session in this account") : "")];
   const list = open && roles.get(a.accountId);
   if (list === "loading") nodes.push(note({ text: "Loading permission sets…" }, "sub"));
   else if (list instanceof Error) nodes.push(note(errorNote(list, "permission sets"), "sub"));
-  else if (list) nodes.push(...list.map(role => {
-    const s = sessionFor(a.accountId, role, sessions.live);
-    return addRow({ accountId: a.accountId, role, session: s }, "sub", info(role), s ? activeTag("Opens your existing console session") : "");
-  }));
+  else if (list) nodes.push(...list.map(role => roleRow(a, role, false)));
   return nodes;
 }
 
@@ -164,18 +177,22 @@ function render() {
     nodes.push(...liveMatches.map(sessionRow));
   }
 
-  const matches = search(accounts, q);
-  const pins = matches.filter(a => pinned.has(a.accountId));
-  const others = matches.filter(a => !pinned.has(a.accountId));
+  // Pins work before the account list loads (the name then falls back to the account ID).
+  // A pin with an active session is listed under Active sessions instead (with its ★).
+  const pins = search([...pinned].map(key => {
+    const [accountId, role] = key.split("/");
+    return { ...(accounts.find(a => a.accountId === accountId) ?? { accountName: accountId, email: "" }), accountId, role };
+  }).filter(p => !sessionFor(p.accountId, p.role, sessions.live)), q);
   if (pins.length) {
     nodes.push(el("h2", {}, "Pinned", el("small", { textContent: `(${pins.length})` })));
-    for (const a of pins) nodes.push(...accountRows(a));
+    for (const p of pins) nodes.push(roleRow(p, p.role, true));
   }
-  if (others.length || !pins.length || accountsNote) // no empty "Other accounts" heading under pinned matches
-    nodes.push(el("h2", {}, pins.length ? "Other accounts" : "Accounts", el("small", { textContent: accounts.length ? `(${others.length})` : "" })));
+  const matches = search(accounts, q);
+  if (matches.length || !pins.length || accountsNote) // no empty heading when only pins match
+    nodes.push(el("h2", {}, "Accounts", el("small", { textContent: accounts.length ? `(${matches.length})` : "" })));
   if (accountsNote) nodes.push(note(accountsNote));
-  if (q && accounts.length && !matches.length) nodes.push(note({ text: `No account matches “${q}”.` }));
-  for (const a of others.slice(0, 300)) nodes.push(...accountRows(a));
+  if (q && accounts.length && !matches.length && !pins.length) nodes.push(note({ text: `No account matches “${q}”.` }));
+  for (const a of matches.slice(0, 300)) nodes.push(...accountRows(a));
 
   $("results").replaceChildren(...nodes);
   select(Math.min(selected, rows.length - 1), false);
@@ -345,9 +362,10 @@ form.onsubmit = async ev => {
   loadAccounts();
 };
 
-const stored = await chrome.storage.sync.get({ ...DEFAULTS, pinned: [] });
+const stored = await chrome.storage.sync.get({ ...DEFAULTS, pins: [] });
 settings = { prefix: stored.prefix, region: stored.region };
-pinned = new Set(stored.pinned);
+pinned = new Set(stored.pins);
+chrome.storage.sync.remove("pinned"); // whole-account pins from an earlier version
 form.prefix.value = settings.prefix;
 form.region.value = settings.region;
 $("welcome").hidden = !!settings.prefix;
