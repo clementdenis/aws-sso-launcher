@@ -72,13 +72,32 @@ const activeTag = title => el("span", { className: "status", textContent: "Activ
 // AWS sometimes sends an empty account alias: use the account name from the portal instead.
 const sessionName = s => s.account_alias || accounts.find(a => a.accountId === s.principal_arn?.split(":")[4])?.accountName || accountName(s);
 
-const info = (title, role, detail, tooltip = "") =>
+const info = (title, role, detail = [], tooltip = "") =>
   el("div", { className: "info", title: tooltip },
     el("span", { className: "title" }, title, role ? el("span", { className: "role", textContent: ` · ${role}` }) : ""),
-    detail ? el("small", { textContent: detail }) : "");
+    detail.length ? el("small", {}, ...detail) : "");
+
+let toastTimer;
+function toast(text) {
+  const t = $("toast");
+  Object.assign(t, { textContent: text, hidden: false });
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.hidden = true; }, 1500);
+}
+
+const copyAccountId = id => navigator.clipboard.writeText(id).then(() => toast(`Copied ${id}`), () => toast("Couldn't copy"));
+
+// Account ID followed by a copy icon, like the access portal.
+const accountIdWithCopy = id => [id, el("button", {
+  className: "copy", title: "Copy account ID (⌘C / Ctrl+C)", ariaLabel: `Copy account ID ${id}`,
+  innerHTML: '<svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 1h8a2 2 0 0 1 2 2v8h-1.5V3a.5.5 0 0 0-.5-.5H5V1Zm-2 3h7a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm0 1.5a.5.5 0 0 0-.5.5v7a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 .5-.5V6a.5.5 0 0 0-.5-.5H3Z"/></svg>',
+  onclick: ev => { ev.stopPropagation(); copyAccountId(id); }
+})];
+
+const rowAccountId = row => row.account?.accountId ?? row.accountId ?? row.session?.principal_arn?.split(":")[4];
 
 const sessionRow = s => addRow({ session: s }, "",
-  info(sessionName(s), roleName(s.principal_arn), `${s.principal_arn?.split(":")[4]} · expires ${time(s.expiry)}`, s.principal_arn),
+  info(sessionName(s), roleName(s.principal_arn), [...accountIdWithCopy(rowAccountId({ session: s })), ` · expires ${time(s.expiry)}`], s.principal_arn),
   Object.assign(button("Sign out", "", ev => { ev.stopPropagation(); signOut(s); }), { title: "Sign out of this session (Delete)" }));
 
 // An account row, followed by its permission sets when expanded.
@@ -86,7 +105,7 @@ function accountRows(a) {
   const open = expanded.has(a.accountId);
   const nodes = [addRow({ account: a }, "",
     el("span", { className: "chevron", textContent: open ? "▾" : "▸" }),
-    info(a.accountName, null, `${a.accountId} · ${a.email}`),
+    info(a.accountName, null, [...accountIdWithCopy(a.accountId), ` · ${a.email}`]),
     hasSession(a.accountId, sessions.live) ? activeTag("You have a console session in this account") : "")];
   const list = open && roles.get(a.accountId);
   if (list === "loading") nodes.push(note({ text: "Loading permission sets…" }, "sub"));
@@ -268,6 +287,10 @@ document.addEventListener("keydown", ev => {
   } else if (ev.key === "Enter") {
     ev.preventDefault();
     activate(row);
+  } else if (ev.key.toLowerCase() === "c" && (ev.metaKey || ev.ctrlKey) && q.selectionStart === q.selectionEnd && rowAccountId(row)) {
+    // ⌘C / Ctrl+C with no text selected in the search box: copy the selected row's account ID.
+    ev.preventDefault();
+    copyAccountId(rowAccountId(row));
   } else if (row.session && ((ev.key === "Delete" && caretAtEnd) || (ev.key === "Backspace" && !q.value))) {
     // Delete (fn+delete on a Mac), or Backspace with an empty search box: sign out of the selected session.
     ev.preventDefault();

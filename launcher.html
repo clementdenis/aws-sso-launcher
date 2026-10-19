@@ -35,6 +35,11 @@
   .row .title { font-weight: 700; }
   .row .role { font-weight: 400; color: var(--ink); }
   .row small { color: var(--muted); font-size: 12px; }
+  .copy { border: 0; background: none; padding: 0 3px; margin-left: 1px; color: var(--muted); cursor: pointer; vertical-align: -1px; line-height: 0; border-radius: 4px; }
+  .copy svg { fill: currentColor; }
+  .copy:hover { color: var(--blue); background: #e9ebed; }
+  #toast { position: fixed; left: 50%; bottom: 48px; translate: -50% 0; padding: 6px 14px; border-radius: 16px;
+           background: var(--nav); color: #fff; font-size: 13px; font-weight: 700; box-shadow: 0 4px 12px #0007163d; pointer-events: none; }
   .chevron { width: 12px; flex: none; color: var(--muted); font-size: 14px; }
   .row.sub { margin-left: 30px; padding-block: 4px; }
   .row.sub .title { font-weight: 400; }
@@ -107,4 +112,5 @@
   <button class="btn link" id="portal" title="Open the access portal in a tab">Portal ↗</button>
   <button class="btn link" id="limit" title="AWS session limit page">Sessions ↗</button>
 </footer>
+<div id="toast" role="status" hidden></div>
 <script type="module" src="launcher.js"></script>

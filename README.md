@@ -41,6 +41,7 @@ Change them later with ⚙. Your accounts load once you're signed in to the acce
 | Find an account | Type to filter, <kbd>↑</kbd> <kbd>↓</kbd> to select |
 | Show its permission sets | <kbd>Enter</kbd>, <kbd>→</kbd> or click (<kbd>←</kbd> folds it back) |
 | Open the console | <kbd>Enter</kbd> or click on a permission set or an active session |
+| Copy an account ID | The copy icon next to it, or select the row and press <kbd>⌘</kbd>+<kbd>C</kbd> / <kbd>Ctrl</kbd>+<kbd>C</kbd> |
 | Sign out of a console session | **Sign out** next to the session, or select it and press <kbd>Delete</kbd> (<kbd>fn</kbd>+<kbd>⌫</kbd> on a Mac, or <kbd>⌫</kbd> when the search box is empty) |
 | Reload your account list | **Refresh** (it is also refreshed each time the launcher opens) |
 | Change the shortcut | `chrome://extensions/shortcuts` or `edge://extensions/shortcuts` |
