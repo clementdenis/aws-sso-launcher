@@ -5,7 +5,7 @@
   "description": "Chrome/Edge extension: search your AWS IAM Identity Center accounts and permission sets, and manage your AWS console sessions.",
   "type": "module",
   "scripts": {
-    "test": "node sessions.test.mjs && node portal.test.mjs"
+    "test": "node sessions.test.mjs && node portal.test.mjs && node links.test.mjs"
   },
   "license": "MIT"
 }

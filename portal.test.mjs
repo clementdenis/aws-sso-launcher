@@ -1,13 +1,11 @@
 // Run: node portal.test.mjs
 import assert from "node:assert/strict";
-import { SignInError, connect, detectFromHistory, hasSession, matchesSession, parseApiEndpoint, search, sessionFor, shortcutUrl } from "./portal.js";
+import { SignInError, connect, detectFromHistory, hasSession, matchesSession, parseApiEndpoint, search, sessionFor } from "./portal.js";
 
 assert.equal(parseApiEndpoint(`<head><script type="application/json" id="env">{"region":"eu-west-3","dpApiEndpoint":"https://portal.sso.eu-west-3.amazonaws.com"}</script>`),
   "https://portal.sso.eu-west-3.amazonaws.com");
 assert.throws(() => parseApiEndpoint("<html></html>"));
 
-assert.equal(shortcutUrl("acme", "111122223333", "Admin Access"),
-  "https://acme.awsapps.com/start/#/console?account_id=111122223333&role_name=Admin%20Access");
 
 const a = (accountName, accountId = "111122223333") => ({ accountName, accountId, email: `aws+${accountName}@example.com` });
 const accounts = [a("billing"), a("prod-api"), a("sandbox-prod", "444455556666")];

@@ -7,8 +7,6 @@ export const listUrl = region => `https://${region}.signin.aws.amazon.com/sessio
 export const limitPageUrl = region => `https://${region}.signin.aws.amazon.com/sessions/limit`;
 // What AWS's own "Sign out selected session" link opens (plain GET).
 export const logoutUrl = (s, region) => `https://${region}.signin.aws.amazon.com/sessions/${encodeURIComponent(s.differentiator)}/v1/logout`;
-// Multi-session console URL format from the AWS docs: https://<differentiator>.<region>.console.aws.amazon.com/
-export const consoleUrl = (s, region) => `https://${s.differentiator}.${region}.console.aws.amazon.com/console/home?region=${region}`;
 
 // "arn:aws:sts::123:assumed-role/AWSReservedSSO_AdminAccess_30cd18/me@x.com" -> "AdminAccess"
 export const roleName = arn => (arn?.split("/")[1] ?? "?").replace(/^AWSReservedSSO_(.+)_[0-9a-f]+$/, "$1");

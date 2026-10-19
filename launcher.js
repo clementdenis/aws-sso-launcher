@@ -1,5 +1,6 @@
-import { DEFAULTS, MAX_SESSIONS, accountName, consoleUrl, limitPageUrl, logoutUrl, refreshBadge, roleName } from "./sessions.js";
-import { SignInError, connect, detectFromHistory, hasSession, matchesSession, portalStartUrl, search, sessionFor, shortcutUrl } from "./portal.js";
+import { DEFAULTS, MAX_SESSIONS, accountName, limitPageUrl, logoutUrl, refreshBadge, roleName } from "./sessions.js";
+import { SignInError, connect, detectFromHistory, hasSession, matchesSession, portalStartUrl, search, sessionFor } from "./portal.js";
+import { parseConsoleUrl, sessionUrl, stableUrl } from "./links.js";
 
 // Commercial AWS regions, for the region field's suggestions (any valid region code is still accepted).
 const REGIONS = {
@@ -20,13 +21,14 @@ const form = $("settings");
 let settings = DEFAULTS;
 let sessions = { live: [] };
 let accounts = [];        // [{ accountId, accountName, email }]
-let pinned = new Set();   // pinned "accountId/permission set" pairs (synced with the browser profile)
+let pins = [];            // [{ accountId, role, url?, title? }]: permission sets, or pages in them (synced)
+let page = null;          // { differentiator, accountId, destination, title } when the current tab is a console page
 let accountsNote = null;  // { text, error?, action? } shown above the account list
 const expanded = new Set(); // account IDs showing their permission sets
 const roles = new Map();  // account ID -> permission set names, "loading" or an Error
 let portalClient = null;  // promise of the portal API client, created on first use
 const portal = () => portalClient ??= connect(settings.prefix).catch(e => { portalClient = null; throw e; });
-let rows = [];            // what each selectable row does: { session }, { account } or { accountId, role, session? }
+let rows = [];            // what each selectable row does: { session }, { account } or { accountId, role, url?, session? }
 let selected = 0;
 
 const time = sec => new Date(sec * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -46,11 +48,12 @@ async function openOrFocus(url, match) {
   window.close();
 }
 
-// Account rows open their permission sets; session and permission set rows open the console,
+// Account rows open their permission sets; the others open the console (at the pinned page, if any),
 // reusing an existing session when there is one (it doesn't take one of the 5 session slots).
+const targetUrl = r => r.session ? sessionUrl(r.session, r.url, settings.region) : stableUrl(settings.prefix, r.accountId, r.role, r.url);
 function activate(row) {
   if (row.account) return toggle(row.account);
-  openTab(row.session ? consoleUrl(row.session, settings.region) : shortcutUrl(settings.prefix, row.accountId, row.role));
+  openTab(targetUrl(row));
 }
 
 function note({ text, error, action }, className = "") {
@@ -86,7 +89,18 @@ function toast(text) {
   toastTimer = setTimeout(() => { t.hidden = true; }, 1500);
 }
 
-const copyAccountId = id => navigator.clipboard.writeText(id).then(() => toast(`Copied ${id}`), () => toast("Couldn't copy"));
+const copyText = (text, done) => navigator.clipboard.writeText(text).then(() => toast(done), () => toast("Couldn't copy"));
+const copyAccountId = id => copyText(id, `Copied ${id}`);
+
+// Browser bookmark in an "AWS" folder under Other bookmarks / Other favorites (optional permission, asked on first use).
+async function bookmark(title, url) {
+  if (!await chrome.permissions.request({ permissions: ["bookmarks"] })) return;
+  const [root] = await chrome.bookmarks.getTree();
+  const other = root.children[1];
+  const folder = other.children.find(c => !c.url && c.title === "AWS") ?? await chrome.bookmarks.create({ parentId: other.id, title: "AWS" });
+  await chrome.bookmarks.create({ parentId: folder.id, title, url });
+  toast(`Bookmarked in ${other.title} › AWS`);
+}
 
 // Account ID followed by a copy icon, like the access portal.
 const accountIdWithCopy = id => [id, el("button", {
@@ -97,36 +111,60 @@ const accountIdWithCopy = id => [id, el("button", {
 
 const rowAccountId = row => row.account?.accountId ?? row.accountId ?? row.session?.principal_arn?.split(":")[4];
 
-const sessionRow = s => addRow({ session: s }, "",
-  info(sessionName(s), roleName(s.principal_arn), [...accountIdWithCopy(rowAccountId({ session: s })), ` · expires ${time(s.expiry)}`], s.principal_arn),
-  Object.assign(button("Sign out", "", ev => { ev.stopPropagation(); signOut(s); }), { title: "Sign out of this session (Delete)" }),
-  pinButton(pinKey(rowAccountId({ session: s }), roleName(s.principal_arn)), `${sessionName(s)} ${roleName(s.principal_arn)}`));
+const samePin = (a, b) => a.accountId === b.accountId && a.role === b.role && (a.url ?? "") === (b.url ?? "");
+const isPinned = p => pins.some(x => samePin(x, p));
 
-const pinKey = (accountId, role) => `${accountId}/${role}`; // permission set names can't contain "/"
-
-function togglePin(key) {
-  if (!pinned.delete(key)) pinned.add(key);
-  chrome.storage.sync.set({ pins: [...pinned] });
+function togglePin(p) {
+  const was = pins;
+  pins = isPinned(p) ? pins.filter(x => !samePin(x, p)) : [...pins, p];
+  // storage.sync allows 8 KB per item (about 40 page pins)
+  chrome.storage.sync.set({ pins }).catch(() => { pins = was; render(); toast("Too many pins: unpin some first"); });
   render();
 }
 
-const pinButton = (key, label) => {
-  const on = pinned.has(key);
+const pinButton = (p, label) => {
+  const on = isPinned(p);
   return el("button", {
     className: `pin${on ? " on" : ""}`, textContent: on ? "★" : "☆",
     title: on ? "Unpin" : "Pin to the top for one-click sign-in", ariaLabel: `${on ? "Unpin" : "Pin"} ${label}`,
-    onclick: ev => { ev.stopPropagation(); togglePin(key); }
+    onclick: ev => { ev.stopPropagation(); togglePin(p); }
   });
 };
 
-// A permission set row: opens the console (reusing an active session); `pinnedRow` is the copy in Pinned.
-function roleRow(account, role, pinnedRow) {
+const sessionRow = s => addRow({ session: s }, "",
+  info(sessionName(s), roleName(s.principal_arn), [...accountIdWithCopy(rowAccountId({ session: s })), ` · expires ${time(s.expiry)}`], s.principal_arn),
+  Object.assign(button("Sign out", "", ev => { ev.stopPropagation(); signOut(s); }), { title: "Sign out of this session (Delete)" }),
+  pinButton({ accountId: rowAccountId({ session: s }), role: roleName(s.principal_arn) }, `${sessionName(s)} ${roleName(s.principal_arn)}`));
+
+// A permission set row in an opened account.
+function roleRow(account, role) {
   const s = sessionFor(account.accountId, role, sessions.live);
-  const key = pinKey(account.accountId, role);
-  return addRow({ accountId: account.accountId, role, session: s }, pinnedRow ? "" : "sub",
-    pinnedRow ? info(account.accountName, role, accountIdWithCopy(account.accountId)) : info(role),
+  return addRow({ accountId: account.accountId, role, session: s }, "sub", info(role),
     s ? activeTag("Opens your existing console session") : "",
-    pinButton(key, `${account.accountName} ${role}`));
+    pinButton({ accountId: account.accountId, role }, `${account.accountName} ${role}`));
+}
+
+// A pinned permission set, or a pinned page in it.
+function pinRow(p) {
+  const s = sessionFor(p.accountId, p.role, sessions.live);
+  return addRow({ accountId: p.accountId, role: p.role, url: p.url, session: s }, "",
+    info(p.accountName, p.role || "any role", p.url ? [`→ ${p.title || new URL(p.url).pathname}`] : accountIdWithCopy(p.accountId), p.url ?? ""),
+    s ? activeTag("Opens in your existing console session") : "",
+    pinButton(p, `${p.accountName} ${p.role} ${p.title ?? ""}`));
+}
+
+// The console page in the current tab: copy its stable link, bookmark it or pin it.
+function pageCard() {
+  if (!page || !settings.prefix) return [];
+  const s = sessions.live.find(x => x.differentiator === page.differentiator);
+  const role = s ? roleName(s.principal_arn) : "";
+  const name = accounts.find(a => a.accountId === page.accountId)?.accountName ?? (s ? sessionName(s) : page.accountId);
+  const link = stableUrl(settings.prefix, page.accountId, role, page.destination);
+  return [el("h2", {}, "This page"), el("div", { className: "page-card" },
+    info(name, role, [page.title], link),
+    button("Copy link", "", () => copyText(link, "Stable link copied")),
+    button("Bookmark", "", () => bookmark(`${name}${role ? ` · ${role}` : ""} — ${page.title}`, link)),
+    pinButton({ accountId: page.accountId, role, url: page.destination, title: page.title }, "this page"))];
 }
 
 // An account row, followed by its permission sets when expanded.
@@ -139,7 +177,7 @@ function accountRows(a) {
   const list = open && roles.get(a.accountId);
   if (list === "loading") nodes.push(note({ text: "Loading permission sets…" }, "sub"));
   else if (list instanceof Error) nodes.push(note(errorNote(list, "permission sets"), "sub"));
-  else if (list) nodes.push(...list.map(role => roleRow(a, role, false)));
+  else if (list) nodes.push(...list.map(role => roleRow(a, role)));
   return nodes;
 }
 
@@ -167,7 +205,7 @@ function render() {
   counter.className = `counter${n >= MAX_SESSIONS ? " full" : n === MAX_SESSIONS - 1 ? " warn" : ""}`;
 
   rows = [];
-  const nodes = [];
+  const nodes = q ? [] : pageCard();
   const liveMatches = sessions.live.filter(s => matchesSession(s, q, sessionName(s)));
   if (sessions.error) {
     nodes.push(el("h2", {}, "Active sessions"), note({ text: "Can't read your console sessions. Are you signed in to the AWS console?", error: true }));
@@ -178,20 +216,19 @@ function render() {
   }
 
   // Pins work before the account list loads (the name then falls back to the account ID).
-  // A pin with an active session is listed under Active sessions instead (with its ★).
-  const pins = search([...pinned].map(key => {
-    const [accountId, role] = key.split("/");
-    return { ...(accounts.find(a => a.accountId === accountId) ?? { accountName: accountId, email: "" }), accountId, role };
-  }).filter(p => !sessionFor(p.accountId, p.role, sessions.live)), q);
-  if (pins.length) {
-    nodes.push(el("h2", {}, "Pinned", el("small", { textContent: `(${pins.length})` })));
-    for (const p of pins) nodes.push(roleRow(p, p.role, true));
+  // A pinned permission set with an active session is listed under Active sessions instead (with its ★).
+  const shownPins = search(pins
+    .map(p => ({ ...(accounts.find(a => a.accountId === p.accountId) ?? { accountName: p.accountId, email: "" }), ...p }))
+    .filter(p => p.url || !sessionFor(p.accountId, p.role, sessions.live)), q);
+  if (shownPins.length) {
+    nodes.push(el("h2", {}, "Pinned", el("small", { textContent: `(${shownPins.length})` })));
+    nodes.push(...shownPins.map(pinRow));
   }
   const matches = search(accounts, q);
-  if (matches.length || !pins.length || accountsNote) // no empty heading when only pins match
+  if (matches.length || !shownPins.length || accountsNote) // no empty heading when only pins match
     nodes.push(el("h2", {}, "Accounts", el("small", { textContent: accounts.length ? `(${matches.length})` : "" })));
   if (accountsNote) nodes.push(note(accountsNote));
-  if (q && accounts.length && !matches.length && !pins.length) nodes.push(note({ text: `No account matches “${q}”.` }));
+  if (q && accounts.length && !matches.length && !shownPins.length) nodes.push(note({ text: `No account matches “${q}”.` }));
   for (const a of matches.slice(0, 300)) nodes.push(...accountRows(a));
 
   $("results").replaceChildren(...nodes);
@@ -364,7 +401,10 @@ form.onsubmit = async ev => {
 
 const stored = await chrome.storage.sync.get({ ...DEFAULTS, pins: [] });
 settings = { prefix: stored.prefix, region: stored.region };
-pinned = new Set(stored.pins);
+pins = stored.pins.map(p => typeof p === "string" ? { accountId: p.split("/")[0], role: p.split("/")[1] } : p); // "id/role" in an earlier version
+const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+const consolePage = tab?.url && parseConsoleUrl(tab.url);
+if (consolePage) page = { ...consolePage, title: tab.title || "AWS console" };
 chrome.storage.sync.remove("pinned"); // whole-account pins from an earlier version
 form.prefix.value = settings.prefix;
 form.region.value = settings.region;

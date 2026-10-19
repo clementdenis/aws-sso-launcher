@@ -13,10 +13,14 @@
   "permissions": [
     "storage",
     "alarms",
-    "cookies"
+    "cookies",
+    "contextMenus",
+    "offscreen",
+    "clipboardWrite"
   ],
   "optional_permissions": [
-    "history"
+    "history",
+    "bookmarks"
   ],
   "host_permissions": [
     "https://*.awsapps.com/*",
