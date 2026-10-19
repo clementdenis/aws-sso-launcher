@@ -46,6 +46,7 @@ Change them later with ⚙. Your accounts load once you're signed in to the acce
 | Pin / unpin a permission set | The ☆ at the end of its row, in an opened account or on an active session (shown on hover or when selected) |
 | Pin the current console page | ☆ in the **This page** card |
 | Stable link to the current console page | **This page** card: **Copy link**, **Bookmark** (in an *AWS* bookmarks folder) or ☆; or right-click → **Copy stable AWS link** (the icon flashes ✓) |
+| Collapse / expand a section | Click its heading (remembered; search always shows every section's matches) |
 | Copy an account ID | The copy icon next to it, or select the row and press <kbd>⌘</kbd>+<kbd>C</kbd> / <kbd>Ctrl</kbd>+<kbd>C</kbd> |
 | Sign out of a console session | **Sign out** next to the session, or select it and press <kbd>Delete</kbd> (<kbd>fn</kbd>+<kbd>⌫</kbd> on a Mac, or <kbd>⌫</kbd> when the search box is empty) |
 | Reload your account list | **Refresh** (it is also refreshed each time the launcher opens) |

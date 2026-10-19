@@ -31,6 +31,10 @@
   body > main { flex: 0 1 auto; min-height: 0; overflow-y: auto; padding-bottom: 6px; }
   h2 { display: flex; gap: 6px; margin: 12px 14px 6px; font-size: 14px; font-weight: 700; }
   h2 small { color: var(--muted); font-weight: 400; }
+  h2.section { margin-left: 6px; }
+  h2.section .chevron { width: 12px; }
+  h2.foldable { cursor: pointer; user-select: none; }
+  h2.foldable:hover { color: var(--blue); }
   .row { display: flex; align-items: center; gap: 10px; margin: 0 8px; padding: 7px 8px; border: 1px solid transparent; border-radius: 8px; cursor: pointer; }
   .row.sel { background: var(--blue-bg); border-color: var(--blue); }
   .row .info { flex: 1; min-width: 0; }

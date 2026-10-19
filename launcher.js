@@ -30,6 +30,7 @@ let portalClient = null;  // promise of the portal API client, created on first 
 const portal = () => portalClient ??= connect(settings.prefix).catch(e => { portalClient = null; throw e; });
 let rows = [];            // what each selectable row does: { session }, { account } or { accountId, role, url?, session? }
 let selected = 0;
+const collapsed = new Set(); // section keys folded by the user (remembered in storage.local)
 
 const time = sec => new Date(sec * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 const el = (tag, props = {}, ...children) => { const e = Object.assign(document.createElement(tag), props); e.append(...children); return e; };
@@ -155,16 +156,32 @@ function pinRow(p) {
 
 // The console page in the current tab: copy its stable link, bookmark it or pin it.
 function pageCard() {
-  if (!page || !settings.prefix) return [];
+  if (!page || !settings.prefix) return null;
   const s = sessions.live.find(x => x.differentiator === page.differentiator);
   const role = s ? roleName(s.principal_arn) : "";
   const name = accounts.find(a => a.accountId === page.accountId)?.accountName ?? (s ? sessionName(s) : page.accountId);
   const link = stableUrl(settings.prefix, page.accountId, role, page.destination);
-  return [el("h2", {}, "This page"), el("div", { className: "page-card" },
+  return el("div", { className: "page-card" },
     info(name, role, [page.title], link),
     button("Copy link", "", () => copyText(link, "Stable link copied")),
     button("Bookmark", "", () => bookmark(`${name}${role ? ` · ${role}` : ""} — ${page.title}`, link)),
-    pinButton({ accountId: page.accountId, role, url: page.destination, title: page.title }, "this page"))];
+    pinButton({ accountId: page.accountId, role, url: page.destination, title: page.title }, "this page"));
+}
+
+// A section heading that folds its content (built only when shown, so ↑/↓ skip folded rows).
+// While searching, every section shows its matches.
+function section(nodes, key, title, count, content) {
+  const searching = !!$("q").value;
+  const open = searching || !collapsed.has(key);
+  nodes.push(el("h2", {
+    className: `section${searching ? "" : " foldable"}`, ariaExpanded: open, title: searching ? "" : open ? "Collapse" : "Expand",
+    onclick: searching ? null : () => {
+      if (!collapsed.delete(key)) collapsed.add(key);
+      chrome.storage.local.set({ collapsed: [...collapsed] });
+      render();
+    }
+  }, el("span", { className: "chevron", textContent: open ? "▾" : "▸" }), title, count ? el("small", { textContent: count }) : ""));
+  if (open) nodes.push(...content());
 }
 
 // An account row, followed by its permission sets when expanded.
@@ -205,14 +222,15 @@ function render() {
   counter.className = `counter${n >= MAX_SESSIONS ? " full" : n === MAX_SESSIONS - 1 ? " warn" : ""}`;
 
   rows = [];
-  const nodes = q ? [] : pageCard();
+  const nodes = [];
+  const card = !q && pageCard();
+  if (card) section(nodes, "page", "This page", "", () => [card]);
   const liveMatches = sessions.live.filter(s => matchesSession(s, q, sessionName(s)));
   if (sessions.error) {
-    nodes.push(el("h2", {}, "Active sessions"), note({ text: "Can't read your console sessions. Are you signed in to the AWS console?", error: true }));
+    section(nodes, "sessions", "Active sessions", "", () => [note({ text: "Can't read your console sessions. Are you signed in to the AWS console?", error: true })]);
   } else if (!q || liveMatches.length) {
-    nodes.push(el("h2", {}, "Active sessions", el("small", { textContent: `(${n}/${MAX_SESSIONS})` })));
-    if (!n) nodes.push(note({ text: "No active console session." }));
-    nodes.push(...liveMatches.map(sessionRow));
+    section(nodes, "sessions", "Active sessions", `(${n}/${MAX_SESSIONS})`,
+      () => [...(n ? [] : [note({ text: "No active console session." })]), ...liveMatches.map(sessionRow)]);
   }
 
   // Pins work before the account list loads (the name then falls back to the account ID).
@@ -220,16 +238,14 @@ function render() {
   const shownPins = search(pins
     .map(p => ({ ...(accounts.find(a => a.accountId === p.accountId) ?? { accountName: p.accountId, email: "" }), ...p }))
     .filter(p => p.url || !sessionFor(p.accountId, p.role, sessions.live)), q);
-  if (shownPins.length) {
-    nodes.push(el("h2", {}, "Pinned", el("small", { textContent: `(${shownPins.length})` })));
-    nodes.push(...shownPins.map(pinRow));
-  }
+  if (shownPins.length) section(nodes, "pinned", "Pinned", `(${shownPins.length})`, () => shownPins.map(pinRow));
+
   const matches = search(accounts, q);
   if (matches.length || !shownPins.length || accountsNote) // no empty heading when only pins match
-    nodes.push(el("h2", {}, "Accounts", el("small", { textContent: accounts.length ? `(${matches.length})` : "" })));
-  if (accountsNote) nodes.push(note(accountsNote));
-  if (q && accounts.length && !matches.length && !shownPins.length) nodes.push(note({ text: `No account matches “${q}”.` }));
-  for (const a of matches.slice(0, 300)) nodes.push(...accountRows(a));
+    section(nodes, "accounts", "Accounts", accounts.length ? `(${matches.length})` : "", () => [
+      ...(accountsNote ? [note(accountsNote)] : []),
+      ...(q && accounts.length && !matches.length && !shownPins.length ? [note({ text: `No account matches “${q}”.` })] : []),
+      ...matches.slice(0, 300).flatMap(accountRows)]);
 
   $("results").replaceChildren(...nodes);
   select(Math.min(selected, rows.length - 1), false);
@@ -400,6 +416,7 @@ form.onsubmit = async ev => {
 };
 
 const stored = await chrome.storage.sync.get({ ...DEFAULTS, pins: [] });
+for (const key of (await chrome.storage.local.get({ collapsed: [] })).collapsed) collapsed.add(key);
 settings = { prefix: stored.prefix, region: stored.region };
 pins = stored.pins.map(p => typeof p === "string" ? { accountId: p.split("/")[0], role: p.split("/")[1] } : p); // "id/role" in an earlier version
 const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
