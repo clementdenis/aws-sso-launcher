@@ -27,7 +27,9 @@ Requires Chrome or Edge 116 or newer.
 On first open, the launcher asks for:
 
 - **Access portal prefix**: the `<prefix>` in your portal URL `https://<prefix>.awsapps.com/start`.
-- **Console sign-in region**: the region used to read your console sessions (default `us-east-1`).
+- **Console sign-in region**: the region used to read your console sessions (default `us-east-1`; the field suggests every AWS region).
+
+**Find it in my browsing history** fills both in for you: it looks for the portals (`<prefix>.awsapps.com`) and sign-in regions (`<region>.signin.aws.amazon.com`) you visit most. It asks for the history permission only when you click it.
 
 Change them later with ⚙. Your accounts load once you're signed in to the access portal (the launcher offers a **Sign in** button when you aren't).
 
@@ -50,6 +52,7 @@ Change them later with ⚙. Your accounts load once you're signed in to the acce
   `GET https://<region>.signin.aws.amazon.com/sessions/v1/list` and
   `GET https://<region>.signin.aws.amazon.com/sessions/<id>/v1/logout`.
   These two are **undocumented** and may change. If they do, the badge disappears and the launcher says the sessions can't be read; it never shows a stale count.
+- **`history`** (optional, asked only when you click **Find it in my browsing history**): reads your history once to suggest your portal prefix and sign-in region. Nothing is stored or sent anywhere. You can revoke it from the extension's details page.
 - **`storage`, `alarms`**: your two settings (synced with your browser profile), a local cache of your account list, and a once-a-minute refresh of the session count.
 
 ## Privacy

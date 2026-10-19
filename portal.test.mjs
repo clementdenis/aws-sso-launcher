@@ -1,6 +1,6 @@
 // Run: node portal.test.mjs
 import assert from "node:assert/strict";
-import { matchesSession, parseApiEndpoint, search, sessionFor, shortcutUrl } from "./portal.js";
+import { detectFromHistory, matchesSession, parseApiEndpoint, search, sessionFor, shortcutUrl } from "./portal.js";
 
 assert.equal(parseApiEndpoint(`<head><script type="application/json" id="env">{"region":"eu-west-3","dpApiEndpoint":"https://portal.sso.eu-west-3.amazonaws.com"}</script>`),
   "https://portal.sso.eu-west-3.amazonaws.com");
@@ -23,4 +23,16 @@ assert.equal(sessionFor(e("prod-api", "ReadOnly"), live), undefined, "same accou
 assert.ok(matchesSession(live[0], "prod admin"));
 assert.ok(!matchesSession(live[0], "billing"));
 assert.ok(matchesSession({ account_alias: "", principal_arn: arn }, "prod", "prod-api"), "empty alias: match on the portal account name");
+const history = [
+  { url: "https://acme.awsapps.com/start/#/", visitCount: 3 },
+  { url: "https://acme.awsapps.com/start/#/console?account_id=1", visitCount: 4 },
+  { url: "https://other-org.awsapps.com/start", visitCount: 5 },
+  { url: "https://eu-west-3.signin.aws.amazon.com/oauth?x=1", visitCount: 9 },
+  { url: "https://us-east-1.signin.aws.amazon.com/", visitCount: 2 },
+  { url: "https://signin.aws.amazon.com/", visitCount: 50 },
+  { url: "https://evil.com/?acme.awsapps.com", visitCount: 99 },
+  { url: "not a url" }
+];
+assert.deepEqual(detectFromHistory(history), { prefixes: ["acme", "other-org"], regions: ["eu-west-3", "us-east-1"] },
+  "ranked by total visits; only real portal / regional sign-in hosts");
 console.log("ok");

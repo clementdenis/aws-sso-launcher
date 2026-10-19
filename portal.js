@@ -78,6 +78,25 @@ export function search(entries, query) {
 export const matchesSession = (s, query, name = s.account_alias) =>
   terms(query).every(term => `${name} ${s.principal_arn}`.toLowerCase().includes(term));
 
+// Browsing history items -> portal prefixes (<prefix>.awsapps.com) and sign-in regions
+// (<region>.signin.aws.amazon.com), most visited first.
+export function detectFromHistory(items) {
+  const tally = re => {
+    const visits = new Map();
+    for (const { url, visitCount = 1 } of items) {
+      let host;
+      try { host = new URL(url).hostname; } catch { continue; }
+      const key = host.match(re)?.[1];
+      if (key) visits.set(key, (visits.get(key) ?? 0) + visitCount);
+    }
+    return [...visits].sort((a, b) => b[1] - a[1]).map(([key]) => key);
+  };
+  return {
+    prefixes: tally(/^([a-z0-9-]+)\.awsapps\.com$/),
+    regions: tally(/^([a-z]{2}(?:-[a-z]+)+-\d)\.signin\.aws\.amazon\.com$/)
+  };
+}
+
 // An active console session for this account + permission set, if any (reusing it saves a session slot).
 export const sessionFor = (entry, live) =>
   live.find(s => s.principal_arn?.split(":")[4] === entry.accountId && roleName(s.principal_arn) === entry.roleName);

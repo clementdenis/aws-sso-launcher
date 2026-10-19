@@ -5,6 +5,7 @@
   "description": "Search your AWS IAM Identity Center accounts and permission sets, and keep an eye on your AWS console sessions.",
   "minimum_chrome_version": "116",
   "permissions": ["storage", "alarms", "cookies"],
+  "optional_permissions": ["history"],
   "host_permissions": [
     "https://*.awsapps.com/*",
     "https://*.aws.amazon.com/*",

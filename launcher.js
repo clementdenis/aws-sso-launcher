@@ -1,6 +1,19 @@
 import { DEFAULTS, MAX_SESSIONS, accountName, consoleUrl, limitPageUrl, logoutUrl, refreshBadge, roleName } from "./sessions.js";
-import { SignInError, loadAssignments, matchesSession, portalStartUrl, search, sessionFor, shortcutUrl } from "./portal.js";
+import { SignInError, detectFromHistory, loadAssignments, matchesSession, portalStartUrl, search, sessionFor, shortcutUrl } from "./portal.js";
 
+// Commercial AWS regions, for the region field's suggestions (any valid region code is still accepted).
+const REGIONS = {
+  "us-east-1": "US East (N. Virginia)", "us-east-2": "US East (Ohio)", "us-west-1": "US West (N. California)", "us-west-2": "US West (Oregon)",
+  "af-south-1": "Africa (Cape Town)", "ap-east-1": "Asia Pacific (Hong Kong)", "ap-east-2": "Asia Pacific (Taipei)",
+  "ap-south-1": "Asia Pacific (Mumbai)", "ap-south-2": "Asia Pacific (Hyderabad)", "ap-southeast-1": "Asia Pacific (Singapore)",
+  "ap-southeast-2": "Asia Pacific (Sydney)", "ap-southeast-3": "Asia Pacific (Jakarta)", "ap-southeast-4": "Asia Pacific (Melbourne)",
+  "ap-southeast-5": "Asia Pacific (Malaysia)", "ap-southeast-6": "Asia Pacific (New Zealand)", "ap-southeast-7": "Asia Pacific (Thailand)",
+  "ap-northeast-1": "Asia Pacific (Tokyo)", "ap-northeast-2": "Asia Pacific (Seoul)", "ap-northeast-3": "Asia Pacific (Osaka)",
+  "ca-central-1": "Canada (Central)", "ca-west-1": "Canada West (Calgary)", "eu-central-1": "Europe (Frankfurt)", "eu-central-2": "Europe (Zurich)",
+  "eu-west-1": "Europe (Ireland)", "eu-west-2": "Europe (London)", "eu-west-3": "Europe (Paris)", "eu-south-1": "Europe (Milan)",
+  "eu-south-2": "Europe (Spain)", "eu-north-1": "Europe (Stockholm)", "il-central-1": "Israel (Tel Aviv)", "me-south-1": "Middle East (Bahrain)",
+  "me-central-1": "Middle East (UAE)", "mx-central-1": "Mexico (Central)", "sa-east-1": "South America (São Paulo)"
+};
 const CACHE_MAX_AGE = 10 * 60 * 1000; // re-read accounts from the portal at most every 10 minutes
 const $ = id => document.getElementById(id);
 const form = $("settings");
@@ -138,6 +151,22 @@ function showSettings(on) {
   for (const id of ["search", "results", "footer"]) $(id).hidden = on;
   $("toggle-settings").setAttribute("aria-pressed", on);
   (on ? form.prefix : $("q")).focus();
+  if (on) suggestFromHistory();
+}
+
+// Optional "history" permission: only asked for when the user clicks the button.
+async function suggestFromHistory() {
+  const granted = await chrome.permissions.contains({ permissions: ["history"] });
+  $("history-btn").hidden = granted;
+  if (!granted) return;
+  const items = await chrome.history.search({ text: "aws", startTime: 0, maxResults: 10000 });
+  const { prefixes, regions } = detectFromHistory(items);
+  $("prefix-options").replaceChildren(...prefixes.map(value => el("option", { value })));
+  if (!form.prefix.value && prefixes[0]) form.prefix.value = prefixes[0];
+  if (!settings.prefix && regions[0]) form.region.value = regions[0]; // first setup only: never override a saved region
+  $("history-hint").textContent = prefixes.length
+    ? `Found in your browsing history: ${prefixes.join(", ")}.`
+    : "No access portal found in your browsing history.";
 }
 
 $("q").addEventListener("input", () => { selected = 0; render(); });
@@ -151,6 +180,8 @@ document.addEventListener("keydown", ev => {
     activate(rows[selected]);
   }
 });
+$("history-btn").onclick = () => chrome.permissions.request({ permissions: ["history"] }).then(ok => ok && suggestFromHistory());
+$("region-options").append(...Object.entries(REGIONS).map(([value, label]) => el("option", { value, label })));
 $("toggle-settings").onclick = () => showSettings(form.hidden);
 $("refresh").onclick = () => { refreshBadge().then(s => { sessions = s; render(); }); loadAccounts(true); };
 $("portal").onclick = () => settings.prefix ? openTab(portalStartUrl(settings.prefix)) : showSettings(true);

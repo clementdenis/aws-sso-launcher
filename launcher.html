@@ -57,6 +57,8 @@
   form input:focus { border-color: var(--blue); }
   form small { color: var(--muted); font-weight: 400; }
   form h2, form .note { margin: 8px 0 0; }
+  .history { margin: -4px 0 0; color: var(--muted); font-size: 13px; }
+  .history button.btn.link { padding-left: 0; border-left-width: 0; }
   form .btn { justify-self: end; }
   [hidden] { display: none !important; }
 </style>
@@ -75,13 +77,17 @@
   <h2>Settings</h2>
   <p id="welcome" class="note" hidden>Welcome! Enter your AWS access portal prefix to get started.</p>
   <label>Access portal prefix
-    <input name="prefix" required pattern="[A-Za-z0-9-]+" placeholder="mycompany">
+    <input name="prefix" required pattern="[A-Za-z0-9-]+" placeholder="mycompany" list="prefix-options" autocomplete="off">
     <small>From your portal URL: https://<b>prefix</b>.awsapps.com/start</small>
   </label>
+  <datalist id="prefix-options"></datalist>
+  <p class="history"><span id="history-hint"></span>
+    <button type="button" class="btn link" id="history-btn" hidden>Find it in my browsing history</button></p>
   <label>Console sign-in region
-    <input name="region" required pattern="[a-z]{2}(-[a-z]+)+-[0-9]" placeholder="us-east-1">
+    <input name="region" required pattern="[a-z]{2}(-[a-z]+)+-[0-9]" placeholder="us-east-1" list="region-options" autocomplete="off">
     <small>Used to read your console sessions.</small>
   </label>
+  <datalist id="region-options"></datalist>
   <button class="btn primary">Save</button>
 </form>
 <footer id="footer">
