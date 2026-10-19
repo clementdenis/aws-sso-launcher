@@ -79,7 +79,7 @@ const info = (title, role, detail, tooltip = "") =>
 
 const sessionRow = s => addRow({ session: s }, "",
   info(sessionName(s), roleName(s.principal_arn), `${s.principal_arn?.split(":")[4]} · expires ${time(s.expiry)}`, s.principal_arn),
-  button("Sign out", "", ev => { ev.stopPropagation(); signOut(s, ev.target); }));
+  Object.assign(button("Sign out", "", ev => { ev.stopPropagation(); signOut(s); }), { title: "Sign out of this session (Delete)" }));
 
 // An account row, followed by its permission sets when expanded.
 function accountRows(a) {
@@ -178,9 +178,11 @@ function resetPortal() {
   expanded.clear();
 }
 
-async function signOut(s, btn) {
-  btn.disabled = true;
-  btn.textContent = "Signing out…";
+async function signOut(s) {
+  // Show progress on the session's Sign out button (the action may come from the Delete key on another row).
+  const i = rows.findIndex(r => r.session === s && !r.role);
+  const btn = document.querySelector(`.row[data-i="${i}"] button`);
+  if (btn) Object.assign(btn, { disabled: true, textContent: "Signing out…" });
   await fetch(logoutUrl(s, settings.region), { credentials: "include" }).catch(() => {});
   sessions = await refreshBadge();
   render();
@@ -266,6 +268,10 @@ document.addEventListener("keydown", ev => {
   } else if (ev.key === "Enter") {
     ev.preventDefault();
     activate(row);
+  } else if (row.session && ((ev.key === "Delete" && caretAtEnd) || (ev.key === "Backspace" && !q.value))) {
+    // Delete (fn+delete on a Mac), or Backspace with an empty search box: sign out of the selected session.
+    ev.preventDefault();
+    signOut(row.session);
   } else if (ev.key === "ArrowRight" && caretAtEnd && row.account && !expanded.has(row.account.accountId)) {
     ev.preventDefault();
     toggle(row.account, true);
