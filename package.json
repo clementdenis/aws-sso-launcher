@@ -1,11 +1,11 @@
 {
-  "name": "aws-sso-panel",
+  "name": "aws-sso-launcher",
   "version": "1.0.0",
   "private": true,
-  "description": "Chrome/Edge extension: AWS IAM Identity Center access portal in the side panel and AWS console multi-sessions in the toolbar.",
+  "description": "Chrome/Edge extension: search your AWS IAM Identity Center accounts and permission sets, and manage your AWS console sessions.",
   "type": "module",
   "scripts": {
-    "test": "node sessions.test.mjs"
+    "test": "node sessions.test.mjs && node portal.test.mjs"
   },
   "license": "MIT"
 }

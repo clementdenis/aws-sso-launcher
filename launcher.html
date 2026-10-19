@@ -1,0 +1,94 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>AWS SSO Launcher</title>
+<style>
+  /* Colors and shapes after AWS's Cloudscape design system (the AWS console look). */
+  :root {
+    --nav: #0f1b2a; --ink: #000716; --muted: #5f6b7a; --line: #e9ebed; --border: #8c8c94;
+    --blue: #0972d3; --blue-bg: #f2f8fd; --orange: #ff9900; --green: #037f0c; --red: #d91515; --amber: #8d6605;
+    font: 14px/1.4 "Amazon Ember", "Open Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  body { width: 480px; margin: 0; color: var(--ink); background: #fff; }
+  header { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--nav); color: #fff; }
+  header h1 { margin: 0; font-size: 15px; font-weight: 700; }
+  header h1 span { color: var(--orange); }
+  header .spacer { flex: 1; }
+  .counter { font-size: 12px; font-weight: 700; padding: 2px 10px; border-radius: 12px; background: #ffffff1f; }
+  .counter.warn { background: var(--orange); color: var(--ink); }
+  .counter.full { background: var(--red); }
+  .icon-btn { border: 0; background: none; color: #d1d5db; font-size: 16px; padding: 2px 6px; border-radius: 6px; cursor: pointer; }
+  .icon-btn:hover, .icon-btn[aria-pressed="true"] { color: #fff; background: #ffffff1f; }
+
+  .search { position: relative; margin: 12px 14px 4px; }
+  .search svg { position: absolute; left: 11px; top: 50%; translate: 0 -50%; fill: var(--muted); }
+  #q { box-sizing: border-box; width: 100%; padding: 8px 12px 8px 34px; font: inherit; color: inherit;
+       border: 2px solid var(--border); border-radius: 8px; outline: none; }
+  #q:focus { border-color: var(--blue); box-shadow: 0 0 0 1px var(--blue); }
+
+  main { max-height: 400px; overflow-y: auto; padding-bottom: 6px; }
+  h2 { display: flex; gap: 6px; margin: 12px 14px 6px; font-size: 14px; font-weight: 700; }
+  h2 small { color: var(--muted); font-weight: 400; }
+  .row { display: flex; align-items: center; gap: 10px; margin: 0 8px; padding: 7px 8px; border: 1px solid transparent; border-radius: 8px; cursor: pointer; }
+  .row.sel { background: var(--blue-bg); border-color: var(--blue); }
+  .row .info { flex: 1; min-width: 0; }
+  .row .title, .row small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .title { font-weight: 700; }
+  .row .role { font-weight: 400; color: var(--ink); }
+  .row small { color: var(--muted); font-size: 12px; }
+  .status { display: inline-flex; align-items: center; gap: 4px; color: var(--green); font-size: 12px; font-weight: 700; white-space: nowrap; }
+  .status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  .note { margin: 6px 14px; padding: 8px 12px; border-radius: 8px; background: #f4f4f4; color: var(--muted); font-size: 13px; }
+  .note.error { background: #fff7f7; color: var(--red); border: 1px solid #ffbfbf; }
+
+  button.btn { font: inherit; font-size: 13px; font-weight: 700; padding: 3px 14px; border-radius: 20px; cursor: pointer;
+               border: 2px solid var(--blue); background: #fff; color: var(--blue); white-space: nowrap; }
+  button.btn:hover { background: var(--blue-bg); }
+  button.btn.primary { border-color: var(--orange); background: var(--orange); color: var(--ink); }
+  button.btn.link { border-color: transparent; background: none; padding: 3px 6px; }
+  button.btn:disabled { opacity: .5; cursor: default; }
+
+  footer { display: flex; gap: 4px; align-items: center; padding: 6px 10px 6px 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+  footer .spacer { flex: 1; }
+  kbd { font: inherit; padding: 0 4px; border: 1px solid var(--line); border-radius: 4px; background: #fafafa; }
+
+  form { display: grid; gap: 10px; padding: 4px 14px 14px; }
+  form label { display: grid; gap: 4px; font-weight: 700; }
+  form input { font: inherit; font-weight: 400; padding: 6px 10px; border: 2px solid var(--border); border-radius: 8px; outline: none; }
+  form input:focus { border-color: var(--blue); }
+  form small { color: var(--muted); font-weight: 400; }
+  form h2, form .note { margin: 8px 0 0; }
+  form .btn { justify-self: end; }
+  [hidden] { display: none !important; }
+</style>
+<header>
+  <h1>AWS <span>SSO</span> Launcher</h1>
+  <span class="spacer"></span>
+  <span id="counter" class="counter" title="Active console sessions (AWS allows 5)" hidden></span>
+  <button id="toggle-settings" class="icon-btn" aria-pressed="false" title="Settings" aria-label="Settings">⚙</button>
+</header>
+<div class="search" id="search">
+  <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1a5.5 5.5 0 0 1 4.38 8.83l3.65 3.64-1.06 1.06-3.64-3.65A5.5 5.5 0 1 1 6.5 1Zm0 1.5a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"/></svg>
+  <input id="q" placeholder="Search accounts and permission sets" autocomplete="off" spellcheck="false" autofocus aria-label="Search">
+</div>
+<main id="results"></main>
+<form id="settings" hidden>
+  <h2>Settings</h2>
+  <p id="welcome" class="note" hidden>Welcome! Enter your AWS access portal prefix to get started.</p>
+  <label>Access portal prefix
+    <input name="prefix" required pattern="[A-Za-z0-9-]+" placeholder="mycompany">
+    <small>From your portal URL: https://<b>prefix</b>.awsapps.com/start</small>
+  </label>
+  <label>Console sign-in region
+    <input name="region" required pattern="[a-z]{2}(-[a-z]+)+-[0-9]" placeholder="us-east-1">
+    <small>Used to read your console sessions.</small>
+  </label>
+  <button class="btn primary">Save</button>
+</form>
+<footer id="footer">
+  <span><kbd>↑</kbd><kbd>↓</kbd> select · <kbd>Enter</kbd> open</span>
+  <span class="spacer"></span>
+  <button class="btn link" id="refresh" title="Reload your accounts from the access portal">Refresh</button>
+  <button class="btn link" id="portal" title="Open the access portal in a tab">Portal ↗</button>
+  <button class="btn link" id="limit" title="AWS session limit page">Sessions ↗</button>
+</footer>
+<script type="module" src="launcher.js"></script>

@@ -1,27 +1,18 @@
 {
   "manifest_version": 3,
-  "name": "AWS SSO Panel",
+  "name": "AWS SSO Launcher",
   "version": "1.0.0",
-  "description": "AWS IAM Identity Center access portal in the side panel, and your AWS console multi-sessions one click away.",
+  "description": "Search your AWS IAM Identity Center accounts and permission sets, and keep an eye on your AWS console sessions.",
   "minimum_chrome_version": "116",
-  "permissions": ["sidePanel", "storage", "declarativeNetRequest", "alarms"],
+  "permissions": ["storage", "alarms", "cookies"],
   "host_permissions": [
     "https://*.awsapps.com/*",
     "https://*.aws.amazon.com/*",
-    "https://*.signin.aws/*",
     "https://*.amazonaws.com/*"
   ],
   "background": { "service_worker": "background.js", "type": "module" },
-  "content_scripts": [{
-    "matches": ["https://*.awsapps.com/*"],
-    "js": ["frame-cookies.js"],
-    "all_frames": true,
-    "run_at": "document_start",
-    "world": "MAIN"
-  }],
-  "side_panel": { "default_path": "sidepanel.html" },
-  "action": { "default_title": "AWS console sessions", "default_popup": "popup.html" },
+  "action": { "default_title": "AWS SSO Launcher", "default_popup": "launcher.html" },
   "commands": {
-    "open-portal": { "suggested_key": { "default": "Alt+Shift+A" }, "description": "Toggle the AWS access portal side panel" }
+    "_execute_action": { "suggested_key": { "default": "Alt+Shift+A" } }
   }
 }
