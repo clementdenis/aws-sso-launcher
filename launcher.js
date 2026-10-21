@@ -1,6 +1,6 @@
-import { DEFAULTS, MAX_SESSIONS, accountName, limitPageUrl, logoutUrl, refreshBadge, roleName } from "./sessions.js";
+import { DEFAULTS, MAX_SESSIONS, accountName, limitPageUrl, logoutUrl, refreshBadge, roleName, signOutOrder } from "./sessions.js";
 import { SignInError, connect, detectFromHistory, hasSession, matchesSession, portalStartUrl, search, sessionFor } from "./portal.js";
-import { parseConsoleUrl, sessionUrl, stableUrl } from "./links.js";
+import { parseConsoleUrl, sessionTabCounts, sessionUrl, stableUrl } from "./links.js";
 
 // Commercial AWS regions, for the region field's suggestions (any valid region code is still accepted).
 const REGIONS = {
@@ -31,6 +31,7 @@ const portal = () => portalClient ??= connect(settings.prefix).catch(e => { port
 let rows = [];            // what each selectable row does: { session }, { account } or { accountId, role, url?, session? }
 let selected = 0;
 const collapsed = new Set(); // section keys folded by the user (remembered in storage.local)
+let limit = null;         // at 5/5: { row, order, tabs, choice, busy } while the user picks a session to sign out of
 
 const time = sec => new Date(sec * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 const el = (tag, props = {}, ...children) => { const e = Object.assign(document.createElement(tag), props); e.append(...children); return e; };
@@ -49,12 +50,69 @@ async function openOrFocus(url, match) {
   window.close();
 }
 
-// Account rows open their permission sets; the others open the console (at the pinned page, if any),
-// reusing an existing session when there is one (it doesn't take one of the 5 session slots).
-const targetUrl = r => r.session ? sessionUrl(r.session, r.url, settings.region) : stableUrl(settings.prefix, r.accountId, r.role, r.url);
+// Account rows open their permission sets; the others open the console (at the pinned page, if any).
 function activate(row) {
   if (row.account) return toggle(row.account);
-  openTab(targetUrl(row));
+  openConsole(row);
+}
+
+// Decided on a fresh session list (one may have started since the popup opened): reuse the session for
+// this account + permission set if there is one; otherwise, at 5/5, ask which session to sign out first.
+async function openConsole(row) {
+  const accountId = rowAccountId(row);
+  const role = row.role ?? (row.session ? roleName(row.session.principal_arn) : "");
+  sessions = await refreshBadge();
+  const s = sessions.live.find(x => x.differentiator === row.session?.differentiator) ?? (role && sessionFor(accountId, role, sessions.live));
+  if (s) return openTab(sessionUrl(s, row.url, settings.region));
+  if (sessions.live.length >= MAX_SESSIONS) return showLimit({ ...row, accountId, role });
+  openTab(stableUrl(settings.prefix, accountId, role, row.url));
+}
+
+async function showLimit(row) {
+  const tabs = sessionTabCounts((await chrome.tabs.query({ url: "https://*.console.aws.amazon.com/*" })).map(t => t.url));
+  limit = { row, order: signOutOrder(sessions.live, tabs), tabs, choice: 0 };
+  $("search").hidden = true;
+  render();
+}
+
+function closeLimit() {
+  limit = null;
+  $("search").hidden = false;
+  render();
+  $("q").focus();
+}
+
+async function signOutAndOpen() {
+  const s = limit.order[limit.choice];
+  limit.busy = true;
+  render();
+  await fetch(logoutUrl(s, settings.region), { credentials: "include" }).catch(() => {});
+  sessions = await refreshBadge();
+  if (sessions.live.some(l => l.differentiator === s.differentiator)) {
+    limit.busy = false;
+    render();
+    return toast("Couldn't sign out of that session");
+  }
+  const { row } = limit;
+  closeLimit();
+  openConsole(row);
+}
+
+function limitPanel() {
+  const { row, order, tabs, choice, busy } = limit;
+  const name = accounts.find(a => a.accountId === row.accountId)?.accountName ?? row.accountId;
+  const tabText = n => n ? `open in ${n} tab${n > 1 ? "s" : ""}` : "not open in any tab";
+  return el("div", { className: "limit" },
+    el("h2", {}, "Session limit reached", el("small", { textContent: `(${MAX_SESSIONS}/${MAX_SESSIONS})` })),
+    el("p", { className: "note" }, "Sign out of one session to open ",
+      el("b", { textContent: `${name}${row.role ? ` · ${row.role}` : ""}${row.title ? ` → ${row.title}` : ""}` }), "."),
+    el("div", { role: "radiogroup", ariaLabel: "Session to sign out of" }, ...order.map((s, i) => el("label", {
+      className: `choice${i === choice ? " sel" : ""}`, onclick: () => { limit.choice = i; render(); }
+    }, el("input", { type: "radio", name: "signout", checked: i === choice, disabled: busy }),
+      info(sessionName(s), roleName(s.principal_arn), [`${tabText(tabs.get(s.differentiator) ?? 0)} · expires ${time(s.expiry)}`], s.principal_arn)))),
+    el("div", { className: "limit-actions" },
+      Object.assign(button("Cancel", "link", closeLimit), { disabled: busy }),
+      Object.assign(button(busy ? "Signing out…" : "Sign out & open", "primary", signOutAndOpen), { disabled: busy })));
 }
 
 function note({ text, error, action }, className = "") {
@@ -73,6 +131,9 @@ function addRow(row, className, ...children) {
 }
 
 const activeTag = title => el("span", { className: "status", textContent: "Active", title });
+// On a row that needs a new session while all 5 are used.
+const limitTag = () => sessions.live.length >= MAX_SESSIONS
+  ? el("span", { className: "status full", textContent: "Limit reached", title: "You'll be asked to sign out of a session first" }) : "";
 
 // AWS sometimes sends an empty account alias: use the account name from the portal instead.
 const sessionName = s => s.account_alias || accounts.find(a => a.accountId === s.principal_arn?.split(":")[4])?.accountName || accountName(s);
@@ -141,16 +202,16 @@ const sessionRow = s => addRow({ session: s }, "",
 function roleRow(account, role) {
   const s = sessionFor(account.accountId, role, sessions.live);
   return addRow({ accountId: account.accountId, role, session: s }, "sub", info(role),
-    s ? activeTag("Opens your existing console session") : "",
+    s ? activeTag("Opens your existing console session") : limitTag(),
     pinButton({ accountId: account.accountId, role }, `${account.accountName} ${role}`));
 }
 
 // A pinned permission set, or a pinned page in it.
 function pinRow(p) {
   const s = sessionFor(p.accountId, p.role, sessions.live);
-  return addRow({ accountId: p.accountId, role: p.role, url: p.url, session: s }, "",
+  return addRow({ accountId: p.accountId, role: p.role, url: p.url, title: p.title, session: s }, "",
     info(p.accountName, p.role || "any role", p.url ? [`→ ${p.title || new URL(p.url).pathname}`] : accountIdWithCopy(p.accountId), p.url ?? ""),
-    s ? activeTag("Opens in your existing console session") : "",
+    s ? activeTag("Opens in your existing console session") : limitTag(),
     pinButton(p, `${p.accountName} ${p.role} ${p.title ?? ""}`));
 }
 
@@ -222,6 +283,7 @@ function render() {
   counter.className = `counter${n >= MAX_SESSIONS ? " full" : n === MAX_SESSIONS - 1 ? " warn" : ""}`;
 
   rows = [];
+  if (limit) return $("results").replaceChildren(limitPanel());
   const nodes = [];
   const card = !q && pageCard();
   if (card) section(nodes, "page", "This page", "", () => [card]);
@@ -300,6 +362,7 @@ async function signOut(s) {
 }
 
 function showSettings(on) {
+  limit = null;
   form.hidden = !on;
   for (const id of ["search", "results", "footer"]) $(id).hidden = on;
   $("toggle-settings").setAttribute("aria-pressed", on);
@@ -367,6 +430,15 @@ $("q").addEventListener("input", () => {
   if ($("q").value && matches.length === 1) toggle(matches[0], true);
 });
 document.addEventListener("keydown", ev => {
+  if (limit && !limit.busy) { // session picker: ↑↓ choose, Enter signs out and opens, Esc goes back
+    const n = limit.order.length;
+    if (ev.key === "ArrowDown" || ev.key === "ArrowUp") limit.choice = (limit.choice + (ev.key === "ArrowDown" ? 1 : n - 1)) % n;
+    else if (ev.key === "Enter") signOutAndOpen();
+    else if (ev.key === "Escape") return ev.preventDefault(), closeLimit();
+    else return;
+    ev.preventDefault();
+    return render();
+  }
   if (!form.hidden || !rows.length) return;
   const row = rows[selected];
   const q = $("q");

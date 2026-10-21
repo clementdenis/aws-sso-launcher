@@ -44,3 +44,13 @@ export function sessionUrl(session, destination, region) {
     ? `${d.searchParams.get("region") || region}.console.aws.amazon.com` : d.hostname;
   return `https://${session.differentiator}.${host}${d.pathname}${d.search}${d.hash}`;
 }
+
+// Console tab URLs -> Map(differentiator -> number of open tabs in that session).
+export function sessionTabCounts(urls) {
+  const counts = new Map();
+  for (const url of urls) {
+    const d = parseConsoleUrl(url)?.differentiator;
+    if (d) counts.set(d, (counts.get(d) ?? 0) + 1);
+  }
+  return counts;
+}

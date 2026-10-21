@@ -27,6 +27,11 @@ export function summarize(sessions, nowSec) {
 
 // No portal prefix by default: the side panel asks for it on first open.
 export const DEFAULTS = { prefix: "", region: "us-east-1" };
+// Which session to sign out of to free a slot, best first: the ones with no open tab first
+// (signing out costs nothing), then the ones expiring soonest.
+export const signOutOrder = (live, tabCounts) => [...live].sort((a, b) =>
+  (tabCounts.get(a.differentiator) ?? 0) - (tabCounts.get(b.differentiator) ?? 0) || a.expiry - b.expiry);
+
 export const getRegion = async () => (await chrome.storage.sync.get(DEFAULTS)).region;
 
 // Fetch the list, update the icon badge and tooltip, and return the summary (with `error` when unavailable).

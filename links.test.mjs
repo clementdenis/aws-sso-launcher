@@ -1,6 +1,6 @@
 // Run: node links.test.mjs
 import assert from "node:assert/strict";
-import { parseConsoleUrl, parseStableUrl, sessionUrl, stableUrl } from "./links.js";
+import { parseConsoleUrl, parseStableUrl, sessionTabCounts, sessionUrl, stableUrl } from "./links.js";
 
 const page = "https://111122223333-u5b3rpfo.eu-west-3.console.aws.amazon.com/s3/buckets/my-bucket?region=eu-west-3&tab=objects#x";
 assert.deepEqual(parseConsoleUrl(page), {
@@ -29,4 +29,6 @@ assert.equal(sessionUrl(s, "https://console.aws.amazon.com/iam/home?region=eu-we
   "https://111122223333-u5b3rpfo.eu-west-1.console.aws.amazon.com/iam/home?region=eu-west-1#/roles", "bare host gets the page's region");
 assert.equal(sessionUrl(s, "", "eu-west-3"), "https://111122223333-u5b3rpfo.eu-west-3.console.aws.amazon.com/console/home?region=eu-west-3", "no page: console home");
 assert.equal(sessionUrl(s, "https://evil.com/x", "eu-west-3"), "https://111122223333-u5b3rpfo.eu-west-3.console.aws.amazon.com/console/home?region=eu-west-3", "never leaves the console");
+assert.deepEqual([...sessionTabCounts([page, page, "https://222222222222-x1.console.aws.amazon.com/iam/home", "https://example.com/", "about:blank"])],
+  [["111122223333-u5b3rpfo", 2], ["222222222222-x1", 1]], "tabs per session; other tabs ignored");
 console.log("ok");

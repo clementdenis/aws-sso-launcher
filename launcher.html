@@ -38,10 +38,10 @@
   .row { display: flex; align-items: center; gap: 10px; margin: 0 8px; padding: 7px 8px; border: 1px solid transparent; border-radius: 8px; cursor: pointer; }
   .row.sel { background: var(--blue-bg); border-color: var(--blue); }
   .row .info { flex: 1; min-width: 0; }
-  :is(.row, .page-card) :is(.title, small) { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  :is(.row, .page-card) .title { font-weight: 700; }
-  :is(.row, .page-card) .role { font-weight: 400; color: var(--ink); }
-  :is(.row, .page-card) small { color: var(--muted); font-size: 12px; }
+  :is(.row, .page-card, .choice) :is(.title, small) { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  :is(.row, .page-card, .choice) .title { font-weight: 700; }
+  :is(.row, .page-card, .choice) .role { font-weight: 400; color: var(--ink); }
+  :is(.row, .page-card, .choice) small { color: var(--muted); font-size: 12px; }
   .pin { flex: none; border: 0; background: none; padding: 0 2px; font-size: 18px; line-height: 1; color: var(--muted); cursor: pointer; visibility: hidden; }
   .row:hover .pin, .row.sel .pin, .pin.on { visibility: visible; }
   .pin.on { color: var(--orange); }
@@ -61,6 +61,14 @@
   .note.sub { margin-left: 40px; }
   .status { display: inline-flex; align-items: center; gap: 4px; color: var(--green); font-size: 12px; font-weight: 700; white-space: nowrap; }
   .status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  .status.full { color: var(--red); font-weight: 400; }
+  .limit h2 { color: var(--red); }
+  .limit .note b { color: var(--ink); }
+  .choice { display: flex; align-items: center; gap: 10px; margin: 0 8px; padding: 7px 8px; border: 1px solid transparent; border-radius: 8px; cursor: pointer; }
+  .choice.sel { background: var(--blue-bg); border-color: var(--blue); }
+  .choice input { margin: 0; accent-color: var(--blue); }
+  .choice .info { flex: 1; min-width: 0; }
+  .limit-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 10px 14px 4px; }
   .note { margin: 6px 14px; padding: 8px 12px; border-radius: 8px; background: #f4f4f4; color: var(--muted); font-size: 13px; }
   .note.error { background: #fff7f7; color: var(--red); border: 1px solid #ffbfbf; }
 
