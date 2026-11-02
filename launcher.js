@@ -192,7 +192,7 @@ const pinButton = (p, label) => {
   const on = isPinned(p);
   return el("button", {
     className: `pin${on ? " on" : ""}`, textContent: on ? "★" : "☆",
-    title: on ? "Unpin" : "Pin to the top for one-click sign-in", ariaLabel: `${on ? "Unpin" : "Pin"} ${label}`,
+    title: on ? "Unpin" : "Pin for one-click sign-in", ariaLabel: `${on ? "Unpin" : "Pin"} ${label}`,
     onclick: ev => { ev.stopPropagation(); togglePin(p); }
   });
 };
@@ -345,14 +345,14 @@ function render() {
 
   rows = [];
   if (limit) return $("results").replaceChildren(limitPanel());
-  const nodes = [];
+  const side = [], nodes = []; // right column, left column
   const card = !q && pageCard();
-  if (card) section(nodes, "page", "This page", "", () => [card]);
+  if (card) section(side, "page", "This page", "", () => [card]);
   const liveMatches = sessions.live.filter(s => matchesSession(s, q, `${sessionLabel(s)} ${sessionName(s)}`));
   if (sessions.error) {
-    section(nodes, "sessions", "Active sessions", "", () => [note({ text: "Can't read your console sessions. Are you signed in to the AWS console?", error: true })]);
+    section(side, "sessions", "Active sessions", "", () => [note({ text: "Can't read your console sessions. Are you signed in to the AWS console?", error: true })]);
   } else if (!q || liveMatches.length) {
-    section(nodes, "sessions", "Active sessions", `(${n}/${MAX_SESSIONS})`,
+    section(side, "sessions", "Active sessions", `(${n}/${MAX_SESSIONS})`,
       () => [...(n ? [] : [note({ text: "No active console session." })]), ...liveMatches.map(sessionRow)]);
   }
 
@@ -361,7 +361,7 @@ function render() {
   const shownPins = search(pins
     .map(p => ({ ...(accounts.find(a => a.accountId === p.accountId) ?? { accountName: p.accountId, email: "" }), ...p }))
     .filter(p => p.url || !sessionFor(p.accountId, p.role, sessions.live)), q);
-  if (shownPins.length) section(nodes, "pinned", "Pinned", `(${shownPins.length})`, () => shownPins.map(pinRow));
+  if (shownPins.length) section(side, "pinned", "Pinned", `(${shownPins.length})`, () => shownPins.map(pinRow));
 
   const matches = search(accounts, q);
   if (matches.length || !shownPins.length || accountsNote) // no empty heading when only pins match
@@ -370,7 +370,8 @@ function render() {
       ...(q && accounts.length && !matches.length && !shownPins.length ? [note({ text: `No account matches “${q}”.` })] : []),
       ...matches.slice(0, 300).flatMap(accountRows)]);
 
-  $("results").replaceChildren(...nodes);
+  // Rows are numbered right column first, so ↓ from the search box goes to sessions and pins before accounts.
+  $("results").replaceChildren(...[el("div", {}, ...nodes), el("aside", {}, ...side)].filter(c => c.childElementCount));
   select(Math.min(selected, rows.length - 1), false);
   document.querySelector("input.rename")?.focus();
 }

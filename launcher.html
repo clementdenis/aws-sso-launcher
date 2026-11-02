@@ -10,7 +10,7 @@
   }
   /* Browsers cap popups at 600px: keep the whole popup within it and let only the list scroll. */
   html { overflow: hidden; }
-  body { width: 480px; max-height: 600px; margin: 0; display: flex; flex-direction: column; color: var(--ink); background: #fff; }
+  body { width: 800px; max-height: 600px; margin: 0; display: flex; flex-direction: column; color: var(--ink); background: #fff; }
   body > * { flex: none; }
   header { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--nav); color: #fff; }
   header h1 { margin: 0; font-size: 15px; font-weight: 700; }
@@ -28,7 +28,14 @@
        border: 2px solid var(--border); border-radius: 8px; outline: none; }
   #q:focus { border-color: var(--blue); box-shadow: 0 0 0 1px var(--blue); }
 
-  body > main { flex: 0 1 auto; min-height: 0; overflow-y: auto; padding-bottom: 6px; }
+  /* Two columns that scroll on their own: accounts, then This page / Active sessions / Pinned. */
+  body > main { flex: 0 1 auto; min-height: 0; display: flex; }
+  body > main > * { flex: 1; min-width: 0; overflow-y: auto; padding-bottom: 6px; }
+  body > main > aside { flex: 0 0 360px; background: #fafafa; border-left: 1px solid var(--line); }
+  body > main > aside:only-child { flex: 1; background: none; border: 0; }
+  aside .row .btn { padding: 2px 10px; font-size: 12px; }
+  aside .page-card { flex-wrap: wrap; background: #fff; }
+  aside .page-card .info { flex-basis: 100%; }
   h2 { display: flex; gap: 6px; margin: 12px 14px 6px; font-size: 14px; font-weight: 700; }
   h2 small { color: var(--muted); font-weight: 400; }
   h2.section { margin-left: 6px; }
@@ -87,7 +94,7 @@
   footer .spacer { flex: 1; }
   kbd { font: inherit; padding: 0 4px; border: 1px solid var(--line); border-radius: 4px; background: #fafafa; }
 
-  form { display: grid; gap: 10px; padding: 4px 14px 14px; }
+  form { display: grid; gap: 10px; max-width: 480px; padding: 4px 14px 14px; }
   form label { display: grid; gap: 4px; font-weight: 700; }
   form input { font: inherit; font-weight: 400; padding: 6px 10px; border: 2px solid var(--border); border-radius: 8px; outline: none; }
   form input:focus { border-color: var(--blue); }
