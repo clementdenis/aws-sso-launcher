@@ -372,7 +372,11 @@ function render() {
       ...matches.slice(0, 300).flatMap(accountRows));
 
   // Rows are numbered right column first, so ↓ from the search box goes to sessions and pins before accounts.
-  $("results").replaceChildren(...[el("div", {}, ...nodes), el("aside", {}, ...side)].filter(c => c.childElementCount));
+  // The columns are rebuilt on each redraw: keep where they were scrolled to.
+  const scrolled = Object.fromEntries([...$("results").children].map(c => [c.tagName + c.className, c.scrollTop]));
+  const columns = [el("div", {}, ...nodes), el("aside", {}, ...side)].filter(c => c.childElementCount);
+  $("results").replaceChildren(...columns);
+  for (const c of columns) c.scrollTop = scrolled[c.tagName + c.className] ?? 0;
   select(Math.min(selected, rows.length - 1), false);
   document.querySelector("input.rename")?.focus();
 }
