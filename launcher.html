@@ -31,8 +31,9 @@
   /* Two columns that scroll on their own: accounts, then This page / Active sessions / Pinned. */
   body > main { flex: 0 1 auto; min-height: 0; display: flex; }
   body > main > * { flex: 1; min-width: 0; overflow-y: auto; padding-bottom: 6px; }
-  body > main > aside { flex: 0 0 360px; background: #fafafa; border-left: 1px solid var(--line); }
+  body > main > aside { flex: 0 0 400px; background: #fafafa; border-left: 1px solid var(--line); }
   body > main > aside:only-child { flex: 1; background: none; border: 0; }
+  aside .row { gap: 6px; }
   aside .row .btn { padding: 2px 10px; font-size: 12px; }
   aside .page-card { flex-wrap: wrap; background: #fff; }
   aside .page-card .info { flex-basis: 100%; }
