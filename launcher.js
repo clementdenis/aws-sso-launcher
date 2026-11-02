@@ -210,7 +210,8 @@ function sessionRow(s) {
     pin && renaming && samePin(renaming, pin) ? renameField(pin)
       : info(sessionLabel(s), role, [...accountIdWithCopy(accountId), ` · expires ${time(s.expiry)}`], s.principal_arn),
     Object.assign(button("Sign out", "", ev => { ev.stopPropagation(); signOut(s); }), { title: "Sign out of this session (Delete)" }),
-    pin ? renameButton(pin) : "",
+    // Unpinned: an invisible ✎ keeps the Sign out buttons aligned.
+    pin ? renameButton(pin) : el("button", { className: "rename-btn", textContent: "✎", disabled: true, ariaHidden: "true", style: "visibility: hidden" }),
     pinButton({ accountId, role }, `${sessionName(s)} ${role}`));
 }
 
