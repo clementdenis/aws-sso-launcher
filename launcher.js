@@ -365,10 +365,11 @@ function render() {
 
   const matches = search(accounts, q);
   if (matches.length || !shownPins.length || accountsNote) // no empty heading when only pins match
-    section(nodes, "accounts", "Accounts", accounts.length ? `(${matches.length})` : "", () => [
+    nodes.push( // not foldable: it has a column of its own
+      el("h2", {}, "Accounts", accounts.length ? el("small", { textContent: `(${matches.length})` }) : ""),
       ...(accountsNote ? [note(accountsNote)] : []),
       ...(q && accounts.length && !matches.length && !shownPins.length ? [note({ text: `No account matches “${q}”.` })] : []),
-      ...matches.slice(0, 300).flatMap(accountRows)]);
+      ...matches.slice(0, 300).flatMap(accountRows));
 
   // Rows are numbered right column first, so ↓ from the search box goes to sessions and pins before accounts.
   $("results").replaceChildren(...[el("div", {}, ...nodes), el("aside", {}, ...side)].filter(c => c.childElementCount));

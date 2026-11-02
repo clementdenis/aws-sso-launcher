@@ -50,7 +50,7 @@ Change them later with ⚙. Your accounts load once you're signed in to the acce
 | Pin the current console page | ☆ in the **This page** card |
 | Rename a pin | ✎ on its row (in Pinned, or on its active session), or select it and press <kbd>F2</kbd>; <kbd>Enter</kbd> saves, <kbd>Esc</kbd> cancels, an empty name restores the default |
 | Stable link to the current console page | **This page** card: **Copy link**, **Bookmark** (in an *AWS* bookmarks folder) or ☆; or right-click → **Copy stable AWS link** (the icon flashes ✓) |
-| Collapse / expand a section | Click its heading (remembered; search always shows every section's matches) |
+| Collapse / expand This page, Active sessions or Pinned | Click its heading (remembered; search always shows every section's matches) |
 | Copy an account ID | The copy icon next to it, or select the row and press <kbd>⌘</kbd>+<kbd>C</kbd> / <kbd>Ctrl</kbd>+<kbd>C</kbd> |
 | At 5/5 sessions, open something new | Pick the session to sign out of (<kbd>↑</kbd> <kbd>↓</kbd>), then **Sign out & open** or <kbd>Enter</kbd>; <kbd>Esc</kbd> goes back |
 | Sign out of a console session | **Sign out** next to the session, or select it and press <kbd>Delete</kbd> (<kbd>fn</kbd>+<kbd>⌫</kbd> on a Mac, or <kbd>⌫</kbd> when the search box is empty) |
