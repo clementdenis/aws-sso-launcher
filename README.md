@@ -2,11 +2,11 @@
 
 A small Chrome / Microsoft Edge extension for people who live in AWS IAM Identity Center (AWS SSO). Press <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> (or click the icon), type a few letters of an account, pick a permission set, press <kbd>Enter</kbd>: you're in the console.
 
-<img src="docs/screenshot.png" width="800" alt="The launcher on a console page: accounts on the left, one opened to its permission sets; on the right, This page card with Copy link, Bookmark and pin; 3 of 5 active sessions with Sign out; pinned permission set and pinned page">
+<img src="docs/screenshot.png" width="800" alt="The launcher on a console page: accounts on the left, one opened to its permission sets; on the right, the current tab's card with Copy link, Bookmark and pin; 3 of 5 active sessions with Sign out; pinned permission set and pinned page">
 
 - **Search every account** assigned to you, by name, ID or email (all words must match). Open an account to see its permission sets: they're fetched only then, so even large organizations load in one call. When your search matches a single account, its permission sets show up right away.
 - **Pin an account + permission set** for one-click sign-in: pins stay in a **Pinned** section in the right-hand column, next to your active sessions (synced across your browsers). While a pin has an active session, it moves to **Active sessions**: a pinned permission set becomes that session's row, and pinned pages are listed under it.
-- **Stable links to console pages**: console URLs contain your session and break when it ends. On a console page, the launcher's **This page** card copies a stable link (the access portal's [shortcut link](https://docs.aws.amazon.com/singlesignon/latest/userguide/createshortcutlink.html) for that account, permission set and page), bookmarks it, or pins the page. Right-click a console page or link → **Copy stable AWS link** does the same from the page.
+- **Stable links to console pages**: console URLs contain your session and break when it ends. On a console page, the launcher's **Current tab** card (top right) copies a stable link (the access portal's [shortcut link](https://docs.aws.amazon.com/singlesignon/latest/userguide/createshortcutlink.html) for that account, permission set and page), bookmarks it, or pins the page. Right-click a console page or link → **Copy stable AWS link** does the same from the page.
 - **Reuses your sessions**: if you already have a console session for that account and permission set (marked **Active**), <kbd>Enter</kbd> takes you back to it instead of opening a new one, so it doesn't use one of your session slots. Stable links (pinned pages, bookmarks, links from teammates) do the same: if you have a session for that account and permission set, they open the page in it.
 - **Console sessions at a glance**: AWS allows 5 simultaneous [console sessions](https://docs.aws.amazon.com/awsconsolehelpdocs/latest/gsg/multisession.html) per browser. The icon badge shows how many are active (orange at 4, red at 5), and the launcher lists them with a **Sign out** button so you can free a slot before you hit the limit.
 - **No surprise at the session limit**: when all 5 sessions are used and you open something that needs a new one, the launcher asks which session to sign out of first, suggesting one you have no tab open for (then the one expiring soonest). Rows that would need a new session are marked **Limit reached**.
@@ -47,10 +47,10 @@ Change them later with ⚙. Your accounts load once you're signed in to the acce
 | Show its permission sets | <kbd>Enter</kbd>, <kbd>→</kbd> or click (<kbd>←</kbd> folds it back) |
 | Open the console | <kbd>Enter</kbd> or click on a permission set or an active session (the tab opens next to the current one, in its tab group) |
 | Pin / unpin a permission set | The ☆ at the end of its row, in an opened account or on an active session (shown on hover or when selected) |
-| Pin the current console page | ☆ in the **This page** card |
+| Pin the current console page | ☆ in the **Current tab** card |
 | Rename a pin | ✎ on its row (in Pinned, or on its active session), or select it and press <kbd>F2</kbd>; <kbd>Enter</kbd> saves, <kbd>Esc</kbd> cancels, an empty name restores the default |
-| Stable link to the current console page | **This page** card: **Copy link**, **Bookmark** (in an *AWS* bookmarks folder) or ☆; or right-click → **Copy stable AWS link** (the icon flashes ✓) |
-| Collapse / expand This page, Active sessions or Pinned | Click its heading (remembered; search always shows every section's matches) |
+| Stable link to the current console page | **Current tab** card: **Copy link**, **Bookmark** (in an *AWS* bookmarks folder) or ☆; or right-click → **Copy stable AWS link** (the icon flashes ✓) |
+| Collapse / expand Active sessions or Pinned | Click its heading (remembered; search always shows every section's matches) |
 | Copy an account ID | The copy icon next to it, or select the row and press <kbd>⌘</kbd>+<kbd>C</kbd> / <kbd>Ctrl</kbd>+<kbd>C</kbd> |
 | At 5/5 sessions, open something new | Pick the session to sign out of (<kbd>↑</kbd> <kbd>↓</kbd>), then **Sign out & open** or <kbd>Enter</kbd>; <kbd>Esc</kbd> goes back |
 | Sign out of a console session | **Sign out** next to the session, or select it and press <kbd>Delete</kbd> (<kbd>fn</kbd>+<kbd>⌫</kbd> on a Mac, or <kbd>⌫</kbd> when the search box is empty) |

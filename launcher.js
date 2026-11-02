@@ -296,7 +296,8 @@ function pageCard() {
     info(name, role, [page.title], link),
     button("Copy link", "", () => copyText(link, "Stable link copied")),
     button("Bookmark", "", () => bookmark(`${name}${role ? ` · ${role}` : ""} — ${page.title}`, link)),
-    pinButton({ accountId: page.accountId, role, url: page.destination, title: page.title }, "this page"));
+    pinButton({ accountId: page.accountId, role, url: page.destination, title: page.title }, "this page"),
+    el("small", { className: "here", textContent: "Current tab" }));
 }
 
 // A section heading that folds its content (built only when shown, so ↑/↓ skip folded rows).
@@ -356,7 +357,7 @@ function render() {
   if (limit) return $("results").replaceChildren(limitPanel());
   const side = [], nodes = []; // right column, left column
   const card = !q && pageCard();
-  if (card) section(side, "page", "This page", "", () => [card]);
+  if (card) side.push(card); // no heading: the card says it's the current tab
   // Pins work before the account list loads (the name then falls back to the account ID).
   const named = pins.map(p => ({ ...(accounts.find(a => a.accountId === p.accountId) ?? { accountName: p.accountId, email: "" }), ...p }));
   // A pin with an active session is listed under Active sessions instead: a permission set as the session

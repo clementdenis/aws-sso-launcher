@@ -22,11 +22,13 @@
   .icon-btn { border: 0; background: none; color: #d1d5db; font-size: 16px; padding: 2px 6px; border-radius: 6px; cursor: pointer; }
   .icon-btn:hover, .icon-btn[aria-pressed="true"] { color: #fff; background: #ffffff1f; }
 
-  .search { position: relative; margin: 12px 14px 4px; }
-  .search svg { position: absolute; left: 11px; top: 50%; translate: 0 -50%; fill: var(--muted); }
-  #q { box-sizing: border-box; width: 100%; padding: 8px 12px 8px 34px; font: inherit; color: inherit;
-       border: 2px solid var(--border); border-radius: 8px; outline: none; }
-  #q:focus { border-color: var(--blue); box-shadow: 0 0 0 1px var(--blue); }
+  /* The search box sits in the header, between the title and the session counter. */
+  .search { position: relative; flex: 1; margin: 0 6px 0 10px; }
+  .search:not([hidden]) ~ .spacer { display: none; }
+  .search svg { position: absolute; left: 10px; top: 50%; translate: 0 -50%; fill: var(--muted); }
+  #q { box-sizing: border-box; width: 100%; padding: 5px 10px 5px 30px; font: inherit; color: var(--ink); background: #fff;
+       border: 2px solid transparent; border-radius: 8px; outline: none; }
+  #q:focus { border-color: var(--blue); }
 
   /* Two columns that scroll on their own: accounts, then This page / Active sessions / Pinned. */
   body > main { flex: 0 1 auto; min-height: 0; display: flex; }
@@ -37,13 +39,15 @@
   aside .row .btn { padding: 2px 10px; font-size: 12px; }
   aside .page-card { flex-wrap: wrap; background: #fff; }
   aside .page-card .info { flex-basis: 100%; }
-  h2 { display: flex; gap: 6px; margin: 12px 14px 6px; font-size: 14px; font-weight: 700; }
+  aside > .page-card { margin-top: 10px; }
+  .page-card .here { margin-left: auto; color: var(--muted); font-size: 12px; }
+  h2 { display: flex; gap: 6px; margin: 10px 14px 4px; font-size: 14px; font-weight: 700; }
   h2 small { color: var(--muted); font-weight: 400; }
   h2.section { margin-left: 6px; }
   h2.section .chevron { width: 12px; }
   h2.foldable { cursor: pointer; user-select: none; }
   h2.foldable:hover { color: var(--blue); }
-  .row { display: flex; align-items: center; gap: 10px; margin: 0 8px; padding: 7px 8px; border: 1px solid transparent; border-radius: 8px; cursor: pointer; }
+  .row { display: flex; align-items: center; gap: 10px; margin: 0 8px; padding: 5px 8px; border: 1px solid transparent; border-radius: 8px; cursor: pointer; }
   .row.sel { background: var(--blue-bg); border-color: var(--blue); }
   .row .info { flex: 1; min-width: 0; }
   :is(.row, .page-card, .choice) :is(.title, small) { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -68,7 +72,7 @@
   #toast { position: fixed; left: 50%; bottom: 48px; translate: -50% 0; padding: 6px 14px; border-radius: 16px;
            background: var(--nav); color: #fff; font-size: 13px; font-weight: 700; box-shadow: 0 4px 12px #0007163d; pointer-events: none; }
   .chevron { width: 12px; flex: none; color: var(--muted); font-size: 14px; }
-  .row.sub { margin-left: 30px; padding-block: 4px; }
+  .row.sub { margin-left: 30px; padding-block: 3px; }
   .row.sub .title { font-weight: 400; }
   .note.sub { margin-left: 40px; }
   .status { display: inline-flex; align-items: center; gap: 4px; color: var(--green); font-size: 12px; font-weight: 700; white-space: nowrap; }
@@ -116,14 +120,14 @@
 </style>
 <header>
   <h1>AWS <span>SSO</span> Launcher</h1>
+  <div class="search" id="search">
+    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1a5.5 5.5 0 0 1 4.38 8.83l3.65 3.64-1.06 1.06-3.64-3.65A5.5 5.5 0 1 1 6.5 1Zm0 1.5a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"/></svg>
+    <input id="q" placeholder="Search accounts by name, ID or email" autocomplete="off" spellcheck="false" autofocus aria-label="Search">
+  </div>
   <span class="spacer"></span>
   <span id="counter" class="counter" title="Active console sessions (AWS allows 5)" hidden></span>
   <button id="toggle-settings" class="icon-btn" aria-pressed="false" title="Settings" aria-label="Settings">⚙</button>
 </header>
-<div class="search" id="search">
-  <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 1a5.5 5.5 0 0 1 4.38 8.83l3.65 3.64-1.06 1.06-3.64-3.65A5.5 5.5 0 1 1 6.5 1Zm0 1.5a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"/></svg>
-  <input id="q" placeholder="Search accounts by name, ID or email" autocomplete="off" spellcheck="false" autofocus aria-label="Search">
-</div>
 <main id="results"></main>
 <form id="settings" hidden>
   <h2>Settings</h2>
