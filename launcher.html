@@ -45,6 +45,10 @@
   .pin { flex: none; border: 0; background: none; padding: 0 2px; font-size: 18px; line-height: 1; color: var(--muted); cursor: pointer; visibility: hidden; }
   .row:hover .pin, .row.sel .pin, .pin.on { visibility: visible; }
   .pin.on { color: var(--orange); }
+  .rename-btn { flex: none; border: 0; background: none; padding: 0 2px; font-size: 16px; line-height: 1; color: var(--muted); cursor: pointer; visibility: hidden; }
+  .row:hover .rename-btn, .row.sel .rename-btn { visibility: visible; }
+  .rename-btn:hover { color: var(--blue); }
+  input.rename { box-sizing: border-box; width: 100%; font: inherit; font-weight: 700; padding: 3px 8px; border: 2px solid var(--blue); border-radius: 6px; outline: none; }
   .pin:hover { color: var(--orange); }
   .page-card { display: flex; align-items: center; gap: 6px; margin: 0 8px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: #fafafa; }
   .page-card .info { flex: 1; min-width: 0; }

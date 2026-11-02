@@ -31,14 +31,18 @@ const portal = () => portalClient ??= connect(settings.prefix).catch(e => { port
 let rows = [];            // what each selectable row does: { session }, { account } or { accountId, role, url?, session? }
 let selected = 0;
 const collapsed = new Set(); // section keys folded by the user (remembered in storage.local)
+let renaming = null;      // the pin being renamed inline
 let limit = null;         // at 5/5: { row, order, tabs, choice, busy } while the user picks a session to sign out of
 
 const time = sec => new Date(sec * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 const el = (tag, props = {}, ...children) => { const e = Object.assign(document.createElement(tag), props); e.append(...children); return e; };
 const button = (text, className, onclick) => el("button", { className: `btn ${className}`, textContent: text, onclick });
 
+// Right after the current tab, and in its tab group if it has one (not at the end of the window).
 async function openTab(url) {
-  await chrome.tabs.create({ url });
+  const [current] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const tab = await chrome.tabs.create({ url, ...(current && { index: current.index + 1, openerTabId: current.id }) });
+  if (current?.groupId >= 0) await chrome.tabs.group({ tabIds: tab.id, groupId: current.groupId });
   window.close();
 }
 
@@ -193,10 +197,25 @@ const pinButton = (p, label) => {
   });
 };
 
-const sessionRow = s => addRow({ session: s }, "",
-  info(sessionName(s), roleName(s.principal_arn), [...accountIdWithCopy(rowAccountId({ session: s })), ` · expires ${time(s.expiry)}`], s.principal_arn),
-  Object.assign(button("Sign out", "", ev => { ev.stopPropagation(); signOut(s); }), { title: "Sign out of this session (Delete)" }),
-  pinButton({ accountId: rowAccountId({ session: s }), role: roleName(s.principal_arn) }, `${sessionName(s)} ${roleName(s.principal_arn)}`));
+// A pin's custom name, if any: it replaces the account name wherever that permission set shows up.
+const pinLabel = (accountId, role) => pins.find(x => samePin(x, { accountId, role }))?.label;
+const sessionLabel = s => pinLabel(rowAccountId({ session: s }), roleName(s.principal_arn)) || sessionName(s);
+
+// An active session; if its permission set is pinned, it can be renamed here too (✎ / F2).
+function sessionRow(s) {
+  const accountId = rowAccountId({ session: s }), role = roleName(s.principal_arn);
+  const stored = pins.find(x => samePin(x, { accountId, role }));
+  const pin = stored && { ...stored, accountName: sessionName(s) };
+  return addRow({ session: s, pin }, "",
+    pin && renaming && samePin(renaming, pin) ? renameField(pin)
+      : info(sessionLabel(s), role, [...accountIdWithCopy(accountId), ` · expires ${time(s.expiry)}`], s.principal_arn),
+    Object.assign(button("Sign out", "", ev => { ev.stopPropagation(); signOut(s); }), { title: "Sign out of this session (Delete)" }),
+    pin ? renameButton(pin) : "",
+    pinButton({ accountId, role }, `${sessionName(s)} ${role}`));
+}
+
+const renameButton = p => el("button", { className: "rename-btn", textContent: "✎", title: "Rename (F2)", ariaLabel: `Rename ${p.label || p.accountName}`,
+  onclick: ev => { ev.stopPropagation(); startRename(p); } });
 
 // A permission set row in an opened account.
 function roleRow(account, role) {
@@ -209,10 +228,52 @@ function roleRow(account, role) {
 // A pinned permission set, or a pinned page in it.
 function pinRow(p) {
   const s = sessionFor(p.accountId, p.role, sessions.live);
-  return addRow({ accountId: p.accountId, role: p.role, url: p.url, title: p.title, session: s }, "",
-    info(p.accountName, p.role || "any role", p.url ? [`→ ${p.title || new URL(p.url).pathname}`] : accountIdWithCopy(p.accountId), p.url ?? ""),
+  const page = p.url ? `→ ${p.title || new URL(p.url).pathname}` : "";
+  // Renamed: the custom name replaces the account name, which moves to the detail line.
+  const detail = p.label ? [`${p.accountName} `, page] : p.url ? [page] : accountIdWithCopy(p.accountId);
+  return addRow({ accountId: p.accountId, role: p.role, url: p.url, title: p.title, session: s, pin: p }, "",
+    renaming && samePin(renaming, p) ? renameField(p) : info(p.label || p.accountName, p.role || "any role", detail, p.url ?? ""),
     s ? activeTag("Opens in your existing console session") : limitTag(),
+    renameButton(p),
     pinButton(p, `${p.accountName} ${p.role} ${p.title ?? ""}`));
+}
+
+function startRename(p) {
+  renaming = p;
+  render();
+  const input = document.querySelector("input.rename");
+  input.focus();
+  input.select();
+}
+
+// Inline name editor: Enter or leaving the field saves, Esc cancels; an empty name restores the default.
+function renameField(p) {
+  const input = el("input", {
+    className: "rename", value: renaming.draft ?? (p.label || p.accountName), ariaLabel: "Pin name", placeholder: p.accountName,
+    onclick: ev => ev.stopPropagation(),
+    oninput: () => { renaming.draft = input.value; },
+    // A redraw (sessions or accounts arriving) recreates the field and refocuses it: only a real blur saves.
+    onblur: () => setTimeout(() => document.activeElement?.matches("input.rename") || renamePin(p, input.value)),
+    onkeydown: ev => {
+      ev.stopPropagation(); // keep ↑↓/Enter/Delete for the field, not the list
+      if (ev.key === "Enter") renamePin(p, input.value);
+      else if (ev.key === "Escape") { ev.preventDefault(); renamePin(p, null); }
+    }
+  });
+  return el("div", { className: "info" }, input);
+}
+
+function renamePin(p, name) {
+  if (!renaming) return; // Enter already saved; this is the blur that follows
+  renaming = null;
+  const label = name?.trim();
+  if (name !== null) {
+    const was = pins;
+    pins = pins.map(({ label: old, ...x }) => samePin(x, p) ? { ...x, ...(label && label !== p.accountName ? { label } : {}) } : { ...x, ...(old ? { label: old } : {}) });
+    chrome.storage.sync.set({ pins }).catch(() => { pins = was; render(); toast("Couldn't save: too many pins"); });
+  }
+  render();
+  $("q").focus();
 }
 
 // The console page in the current tab: copy its stable link, bookmark it or pin it.
@@ -287,7 +348,7 @@ function render() {
   const nodes = [];
   const card = !q && pageCard();
   if (card) section(nodes, "page", "This page", "", () => [card]);
-  const liveMatches = sessions.live.filter(s => matchesSession(s, q, sessionName(s)));
+  const liveMatches = sessions.live.filter(s => matchesSession(s, q, `${sessionLabel(s)} ${sessionName(s)}`));
   if (sessions.error) {
     section(nodes, "sessions", "Active sessions", "", () => [note({ text: "Can't read your console sessions. Are you signed in to the AWS console?", error: true })]);
   } else if (!q || liveMatches.length) {
@@ -311,6 +372,7 @@ function render() {
 
   $("results").replaceChildren(...nodes);
   select(Math.min(selected, rows.length - 1), false);
+  document.querySelector("input.rename")?.focus();
 }
 
 function select(i, scroll = true) {
@@ -453,6 +515,9 @@ document.addEventListener("keydown", ev => {
     // ⌘C / Ctrl+C with no text selected in the search box: copy the selected row's account ID.
     ev.preventDefault();
     copyAccountId(rowAccountId(row));
+  } else if (ev.key === "F2" && row.pin) {
+    ev.preventDefault();
+    startRename(row.pin);
   } else if (row.session && ((ev.key === "Delete" && caretAtEnd) || (ev.key === "Backspace" && !q.value))) {
     // Delete (fn+delete on a Mac), or Backspace with an empty search box: sign out of the selected session.
     ev.preventDefault();

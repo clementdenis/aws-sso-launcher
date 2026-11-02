@@ -45,9 +45,10 @@ Change them later with ⚙. Your accounts load once you're signed in to the acce
 | Open the launcher | Click the toolbar icon, or <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> (<kbd>⌥</kbd><kbd>⇧</kbd><kbd>A</kbd> on macOS) |
 | Find an account | Type to filter, <kbd>↑</kbd> <kbd>↓</kbd> to select |
 | Show its permission sets | <kbd>Enter</kbd>, <kbd>→</kbd> or click (<kbd>←</kbd> folds it back) |
-| Open the console | <kbd>Enter</kbd> or click on a permission set or an active session |
+| Open the console | <kbd>Enter</kbd> or click on a permission set or an active session (the tab opens next to the current one, in its tab group) |
 | Pin / unpin a permission set | The ☆ at the end of its row, in an opened account or on an active session (shown on hover or when selected) |
 | Pin the current console page | ☆ in the **This page** card |
+| Rename a pin | ✎ on its row (in Pinned, or on its active session), or select it and press <kbd>F2</kbd>; <kbd>Enter</kbd> saves, <kbd>Esc</kbd> cancels, an empty name restores the default |
 | Stable link to the current console page | **This page** card: **Copy link**, **Bookmark** (in an *AWS* bookmarks folder) or ☆; or right-click → **Copy stable AWS link** (the icon flashes ✓) |
 | Collapse / expand a section | Click its heading (remembered; search always shows every section's matches) |
 | Copy an account ID | The copy icon next to it, or select the row and press <kbd>⌘</kbd>+<kbd>C</kbd> / <kbd>Ctrl</kbd>+<kbd>C</kbd> |

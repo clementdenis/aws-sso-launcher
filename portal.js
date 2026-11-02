@@ -63,14 +63,14 @@ export async function connect(prefix) {
 
 const terms = query => query.toLowerCase().split(/\s+/).filter(Boolean);
 
-// Every term must appear in the account's name, ID, email or (for pins) permission set and page title;
+// Every term must appear in the account's name, ID, email or (for pins) permission set, page title and custom name;
 // names starting with the first term come first.
 export function search(accounts, query) {
   const t = terms(query);
   if (!t.length) return accounts;
   const rank = a => a.accountName.toLowerCase().startsWith(t[0]) ? 0 : 1;
   return accounts
-    .filter(a => t.every(term => `${a.accountName} ${a.accountId} ${a.email} ${a.role ?? ""} ${a.title ?? ""}`.toLowerCase().includes(term)))
+    .filter(a => t.every(term => `${a.accountName} ${a.accountId} ${a.email} ${a.role ?? ""} ${a.title ?? ""} ${a.label ?? ""}`.toLowerCase().includes(term)))
     .sort((x, y) => rank(x) - rank(y)); // stable: keeps alphabetical order within a rank
 }
 

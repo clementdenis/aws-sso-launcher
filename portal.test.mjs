@@ -16,6 +16,7 @@ assert.deepEqual(search(accounts, "aws+billing").map(x => x.accountName), ["bill
 assert.equal(search(accounts, "prod nope").length, 0, "every term must match");
 assert.deepEqual(search([{ ...a("prod-api"), role: "Admin" }, { ...a("prod-api"), role: "ReadOnly" }], "prod admin").map(x => x.role), ["Admin"],
   "pins match on their permission set too");
+assert.equal(search([{ ...a("prod-api"), role: "Admin", label: "Main prod" }], "main").length, 1, "pins match on their custom name");
 
 const arn = "arn:aws:sts::111122223333:assumed-role/AWSReservedSSO_Admin_30cd181501209ecf/me@example.com";
 const live = [{ account_alias: "prod-api", principal_arn: arn }];
