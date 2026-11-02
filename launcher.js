@@ -226,15 +226,23 @@ function roleRow(account, role) {
     pinButton({ accountId: account.accountId, role }, `${account.accountName} ${role}`));
 }
 
-// A pinned permission set, or a pinned page in it.
+// A pinned permission set, or a pinned page in it, with no active session.
 function pinRow(p) {
-  const s = sessionFor(p.accountId, p.role, sessions.live);
   const page = p.url ? `→ ${p.title || new URL(p.url).pathname}` : "";
   // Renamed: the custom name replaces the account name, which moves to the detail line.
   const detail = p.label ? [`${p.accountName} `, page] : p.url ? [page] : accountIdWithCopy(p.accountId);
-  return addRow({ accountId: p.accountId, role: p.role, url: p.url, title: p.title, session: s, pin: p }, "",
+  return addRow({ accountId: p.accountId, role: p.role, url: p.url, title: p.title, pin: p }, "",
     renaming && samePin(renaming, p) ? renameField(p) : info(p.label || p.accountName, p.role || "any role", detail, p.url ?? ""),
-    s ? activeTag("Opens in your existing console session") : limitTag(),
+    limitTag(),
+    renameButton(p),
+    pinButton(p, `${p.accountName} ${p.role} ${p.title ?? ""}`));
+}
+
+// A pinned page of an active session, listed under it. A custom name replaces the page title.
+function pageRow(p, s) {
+  const page = `→ ${p.title || new URL(p.url).pathname}`;
+  return addRow({ accountId: p.accountId, role: p.role, url: p.url, title: p.title, session: s, pin: p }, "sub",
+    renaming && samePin(renaming, p) ? renameField(p) : info(p.label || page, null, p.label ? [page] : [], p.url),
     renameButton(p),
     pinButton(p, `${p.accountName} ${p.role} ${p.title ?? ""}`));
 }
@@ -349,19 +357,24 @@ function render() {
   const side = [], nodes = []; // right column, left column
   const card = !q && pageCard();
   if (card) section(side, "page", "This page", "", () => [card]);
-  const liveMatches = sessions.live.filter(s => matchesSession(s, q, `${sessionLabel(s)} ${sessionName(s)}`));
+  // Pins work before the account list loads (the name then falls back to the account ID).
+  const named = pins.map(p => ({ ...(accounts.find(a => a.accountId === p.accountId) ?? { accountName: p.accountId, email: "" }), ...p }));
+  // A pin with an active session is listed under Active sessions instead: a permission set as the session
+  // itself (with its ★), a page under its session. When searching, a session shows if it or one of its pages matches.
+  const sessionPages = s => {
+    const own = named.filter(p => p.url && sessionFor(p.accountId, p.role, [s]));
+    return matchesSession(s, q, `${sessionLabel(s)} ${sessionName(s)}`) ? own : search(own, q);
+  };
+  const liveMatches = sessions.live.map(s => [s, sessionPages(s)])
+    .filter(([s, pages]) => pages.length || matchesSession(s, q, `${sessionLabel(s)} ${sessionName(s)}`));
   if (sessions.error) {
     section(side, "sessions", "Active sessions", "", () => [note({ text: "Can't read your console sessions. Are you signed in to the AWS console?", error: true })]);
   } else if (!q || liveMatches.length) {
-    section(side, "sessions", "Active sessions", `(${n}/${MAX_SESSIONS})`,
-      () => [...(n ? [] : [note({ text: "No active console session." })]), ...liveMatches.map(sessionRow)]);
+    section(side, "sessions", "Active sessions", `(${n}/${MAX_SESSIONS})`, () => [...(n ? [] : [note({ text: "No active console session." })]),
+      ...liveMatches.flatMap(([s, pages]) => [sessionRow(s), ...pages.map(p => pageRow(p, s))])]);
   }
 
-  // Pins work before the account list loads (the name then falls back to the account ID).
-  // A pinned permission set with an active session is listed under Active sessions instead (with its ★).
-  const shownPins = search(pins
-    .map(p => ({ ...(accounts.find(a => a.accountId === p.accountId) ?? { accountName: p.accountId, email: "" }), ...p }))
-    .filter(p => p.url || !sessionFor(p.accountId, p.role, sessions.live)), q);
+  const shownPins = search(named.filter(p => !sessionFor(p.accountId, p.role, sessions.live)), q);
   if (shownPins.length) section(side, "pinned", "Pinned", `(${shownPins.length})`, () => shownPins.map(pinRow));
 
   const matches = search(accounts, q);
